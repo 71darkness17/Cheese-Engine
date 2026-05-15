@@ -37,9 +37,3 @@ jobs:
           VALIDATE_PYTHON: true
           VALIDATE_PYTHON_BLACK: true
           VALIDATE_PYTHON_FLAKE8: true
-          
-          VALIDATE_ENV: false
-          VALIDATE_MD: false
-          VALIDATE_YAML: false
-          VALIDATE_JSON: false
-          VALIDATE_BASH: false
