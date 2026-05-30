@@ -23,7 +23,6 @@ add_executable(App src/main.cpp src/types.cpp)
 
 target_link_libraries(App PRIVATE EnTT::EnTT glm::glm)
 
-
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
