@@ -54,6 +54,14 @@ struct AABB {
   AABB(const glm::vec2& lb, const glm::vec2& ub);
 
   /**
+   * @brief constructor for AABB-object
+   * @param lp: lower bound, point with the smallest coords
+   * @param ub: upper bound, point with the biggest coords
+   * @retval None
+   */
+  AABB(const glm::vec2& lb, const glm::vec2& ub);
+
+  /**
    * @brief  checks the collision between two AABB-objects
    * @param  other: AABB-object to check collision with
    * @retval true if the objects collide and false else
