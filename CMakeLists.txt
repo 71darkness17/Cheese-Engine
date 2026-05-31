@@ -19,6 +19,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(entt)
 FetchContent_MakeAvailable(glm)
 
-add_executable(App src/main.cpp)
+add_executable(App src/main.cpp src/types.cpp)
 
 target_link_libraries(App PRIVATE EnTT::EnTT glm::glm)
