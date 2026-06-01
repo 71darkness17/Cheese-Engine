@@ -2,8 +2,8 @@
 #include <glm/glm.hpp>
 
 phys2d::AABB::AABB(
-  const glm::vec2& lp, 
-  const glm::vec2& ub): lowerBound(lp), upperBound(ub)
+  const glm::vec2& lb, 
+  const glm::vec2& ub): lowerBound(lb), upperBound(ub)
 {
 
 }
