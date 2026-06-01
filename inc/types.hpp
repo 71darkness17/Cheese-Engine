@@ -34,9 +34,9 @@ public:
   /**
    * @brief  checks the collision between two AABB-objects
    * @param  other: AABB-object to check collision with
-   * @retval true if the object collide and false else
+   * @retval true if the objects collide and false else
    */
-  bool collidesWith(const AABB& other);
+  bool collidesWith(const AABB& other) const;
 
   /**
    * @brief  gives lefter upper corner of the AABB-object
@@ -52,6 +52,14 @@ public:
    */
   const glm::vec2 getUpperBound() const;
 };
+
+/**
+ * @brief  checks the collision between two AABB-objects
+ * @param  aabb1: first box
+ * @param  aabb2: second box
+ * @retval true if the objects collide and false else
+ */
+bool checkCollision(const AABB& aabb1, const AABB& aabb2);
 
 struct TransformComponent {
 private:
