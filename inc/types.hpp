@@ -55,7 +55,7 @@ struct AABB {
 
   /**
    * @brief constructor for AABB-object
-   * @param lp: lower bound, point with the smallest coords
+   * @param lb: lower bound, point with the smallest coords
    * @param ub: upper bound, point with the biggest coords
    * @retval None
    */
