@@ -3,10 +3,12 @@
 
 namespace phys2d {
 
+const double pi = 3.141592653589793;
+
 enum class BodyType {
   Static,    ///< zero mass, zero velocity, can be manually moved
   Kinematic, ///< zero mass, velocity is set by user, is moved by System
-  Dinamic    ///< non-negative mass, velocity is determined by outer forces, is moved by physics system
+  Dynamic    ///< non-negative mass, velocity is determined by outer forces, is moved by physics system
 };
 
 enum class BodyShape {
@@ -39,14 +41,14 @@ public:
   bool collidesWith(const AABB& other) const;
 
   /**
-   * @brief  gives lefter upper corner of the AABB-object
+   * @brief  gives lefter lower corner of the AABB-object
    * @param  None
    * @retval two-dimensional vector of x-axis and y-axis coords
    */
   const glm::vec2 getLowerBound() const;
 
   /**
-   * @brief  gives righter lower corner of the AABB-object
+   * @brief  gives righter upper corner of the AABB-object
    * @param  None
    * @retval two-dimensional vector of x-axis and y-axis coords
    */
@@ -85,7 +87,7 @@ public:
    * @param None
    * @retval true if the object has been changed and false else
    */
-  const bool isDirty() const;
+  bool isDirty() const;
 
   /**
    * @brief  gives the position of the object on the grid
@@ -99,7 +101,7 @@ public:
    * @param None
    * @retval rotation of the object in radians, clockwise
    */
-  const float getRotation() const;
+  float getRotation() const;
 
   /**
    * @brief  gives the scaling coefs along both axises
@@ -113,7 +115,7 @@ public:
    * @param None
    * @retval model matrix 3x3 containing data about position, scaling and rotation
    */
-  const glm::mat3 getModelMatrix() const;
+  const glm::mat3& getModelMatrix() const;
 
   /**
    * @brief  gives the forward vector of an object. Can be used for cannons and bullets, for example
