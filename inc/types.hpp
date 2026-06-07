@@ -53,6 +53,7 @@ struct AABB {
    */
   AABB(const glm::vec2& lb, const glm::vec2& ub);
 
+  AABB() = default;
   /**
    * @brief constructor for AABB-object
    * @param lb: lower bound, point with the smallest coords

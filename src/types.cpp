@@ -66,6 +66,10 @@ void TransformComponent::rotate(float angle_delta) {
     int circles = rotation / phys2d::pi2;
     rotation -= circles * phys2d::pi2;
   }
+  if (rotation <= -2 * phys2d::pi) {
+    int circles = abs(rotation / 2 * phys2d::pi);
+    rotation += circles * 2 * phys2d::pi;
+  }
   dirty = true;
 }
 
