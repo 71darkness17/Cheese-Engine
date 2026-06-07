@@ -4,6 +4,8 @@
 namespace phys2d {
 
 inline constexpr double pi = 3.141592653589793238462;
+inline constexpr double epsilon = 1e-6;
+float round(float n);
 
 enum class BodyType {
   Static,    ///< zero mass, zero velocity, can be manually moved
@@ -19,12 +21,11 @@ enum class BodyShape {
   SegmentChain ///< chain of segments, has array of points to connect sequently
 };
 
-class AABB {
-private:
+struct AABB {
   glm::vec2 lowerBound; ///< point with the smallest coords
   glm::vec2 upperBound; ///< point with the biggest coords
-public:
 
+  AABB() = default;
   /**
    * @brief constructor for AABB-object
    * @param lb: lower bound, point with the smallest coords
@@ -39,20 +40,6 @@ public:
    * @retval true if the objects collide and false else
    */
   bool collidesWith(const AABB& other) const;
-
-  /**
-   * @brief  gives lefter lower corner of the AABB-object
-   * @param  None
-   * @retval two-dimensional vector of x-axis and y-axis coords
-   */
-  const glm::vec2 getLowerBound() const;
-
-  /**
-   * @brief  gives righter upper corner of the AABB-object
-   * @param  None
-   * @retval two-dimensional vector of x-axis and y-axis coords
-   */
-  const glm::vec2 getUpperBound() const;
 };
 
 /**
@@ -64,7 +51,6 @@ public:
 bool checkCollision(const AABB& aabb1, const AABB& aabb2);
 
 struct TransformComponent {
-private:
   glm::vec2 position{0.0f, 0.0f};       ///< global position of the object on the grid
   float rotation{0.0f};                 ///< rotation angle of the object, clockwise
   glm::vec2 scaling{1.0f};              ///< scaling coefficients for x-axis and y-axis respectively
@@ -78,46 +64,16 @@ private:
    * @retval None
    */
   void updateMatrix() const;
-public:
+
+  /**
+   * @brief default concstructor for TransformComponent
+   */
   TransformComponent() = default;
+
+  /**
+   * @brief constructor for TransformComponent with all fields
+   */
   TransformComponent(const glm::vec2& position, float rotation, const glm::vec2& scaling);
-
-  /// @name Getters
-  /// @{
-  /**
-   * @brief  answers the question "Has the object been moved/rotated/scaled"
-   * @param None
-   * @retval true if the object has been changed and false else
-   */
-  bool isDirty() const;
-
-  /**
-   * @brief  gives the position of the object on the grid
-   * @param None
-   * @retval vec2 of x-axis and y-axis coords respectively
-   */
-  const glm::vec2 getPosition() const;
-
-  /**
-   * @brief  gives the rotation of the object
-   * @param None
-   * @retval rotation of the object in radians, clockwise
-   */
-  float getRotation() const;
-
-  /**
-   * @brief  gives the scaling coefs along both axises
-   * @param None
-   * @retval vec2 of x-axis and y-axis scaling coefficients
-   */
-  const glm::vec2 getScale() const;
-
-  /**
-   * @brief  gives the model matrix used for MVP-rendering
-   * @param None
-   * @retval model matrix 3x3 containing data about position, scaling and rotation
-   */
-  const glm::mat3& getModelMatrix() const;
 
   /**
    * @brief  gives the forward vector of an object. Can be used for cannons and bullets, for example
@@ -125,8 +81,6 @@ public:
    * @retval forward direction
    */
   const glm::vec2 getForward() const;
-
-  /// @}
 
   /// @name Setters
   /// @{
@@ -188,23 +142,6 @@ private:
 
 public:
 
-  /// @name Getters
-  /// @{
-  const glm::vec2 getLinearVelocity() const;
-  const float getAngularVelocity() const;
-  const glm::vec2 getLinearAcceleration() const;
-  const float getAngularAcceleration() const;
-  const float getMass() const;
-  /// @}
-
-  /// @name Setters
-  /// @{
-  void setLinearVelocity(const glm::vec2& new_velocity);
-  void setAngularVelocity(const float new_velocity);
-  void setLinearAcceleration(const glm::vec2& new_accel);
-  void setAngularAcceleration(const float new_accel);
-  void setMass(const float new_mass);
-  /// @}
 };
 
 class ColliderComponent {
