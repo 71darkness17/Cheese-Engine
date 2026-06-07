@@ -3,7 +3,7 @@
 
 namespace phys2d {
 
-const double pi = 3.141592653589793;
+inline constexpr double pi = 3.141592653589793238462;
 
 enum class BodyType {
   Static,    ///< zero mass, zero velocity, can be manually moved
@@ -77,9 +77,11 @@ private:
    * @param  None
    * @retval None
    */
-  void updateMatrix();
+  void updateMatrix() const;
 public:
-  
+  TransformComponent() = default;
+  TransformComponent(const glm::vec2& position, float rotation, const glm::vec2& scaling);
+
   /// @name Getters
   /// @{
   /**
