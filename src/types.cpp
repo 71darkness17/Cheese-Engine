@@ -35,15 +35,23 @@ bool phys2d::checkCollision(const AABB& aabb1, const AABB& aabb2)
   return aabb1.collidesWith(aabb2);
 }
 
-void phys2d::TransformComponent::updateMatrix() 
+phys2d::TransformComponent::TransformComponent(
+  const glm::vec2& position, 
+  float rotation, 
+  const glm::vec2& scaling): position(position), rotation(rotation), scaling(scaling), dirty(true)
+{
+
+}
+
+void phys2d::TransformComponent::updateMatrix() const
 {
   float cosinus = glm::cos(rotation);
   float sinus = glm::sin(rotation);
 
   model_matrix = glm::mat3(
-        glm::vec3(cosinus * scaling.x,  -sinus * scaling.x, 0.0f),
-        glm::vec3(sinus * scaling.y,   cosinus * scaling.y, 0.0f),
-        glm::vec3(position.x,      position.y,    1.0f)
+        glm::vec3(cosinus * scaling.x,  -sinus * scaling.y, position.x),
+        glm::vec3(sinus * scaling.x,   cosinus * scaling.y, position.y),
+        glm::vec3(0.0f,      0.0f,    1.0f)
     );
   dirty = false;
 }
@@ -69,6 +77,10 @@ const glm::vec2 phys2d::TransformComponent::getScale() const
 
 const glm::mat3& phys2d::TransformComponent::getModelMatrix() const
 {
+  if (dirty) {
+    updateMatrix();
+    dirty = false;
+  }
   return model_matrix;
 }
 
