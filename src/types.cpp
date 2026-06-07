@@ -1,6 +1,11 @@
 #include <types.hpp>
 #include <glm/glm.hpp>
 #include <stdexcept>
+#include <cmath>
+
+inline float phys2d::round(float x) {
+    return std::round(x * 1'000'000.f) / 1'000'000.f;
+}
 
 phys2d::AABB::AABB(
   const glm::vec2& lb, 
@@ -12,22 +17,12 @@ phys2d::AABB::AABB(
   }
 }
 
-const glm::vec2 phys2d::AABB::getLowerBound() const 
-{
-  return lowerBound;
-}
-
-const glm::vec2 phys2d::AABB::getUpperBound() const 
-{
-  return upperBound;
-}
-
 bool phys2d::AABB::collidesWith(const AABB& other) const
 {
-  return getLowerBound().x <= other.getUpperBound().x &&
-         getUpperBound().x >= other.getLowerBound().x &&
-         getLowerBound().y <= other.getUpperBound().y &&
-         getUpperBound().y >= other.getLowerBound().y;
+  return lowerBound.x <= other.upperBound.x &&
+         upperBound.x >= other.lowerBound.x &&
+         lowerBound.y <= other.upperBound.y &&
+         upperBound.y >= other.lowerBound.y;
 }
 
 bool phys2d::checkCollision(const AABB& aabb1, const AABB& aabb2)
@@ -45,6 +40,7 @@ phys2d::TransformComponent::TransformComponent(
 
 void phys2d::TransformComponent::updateMatrix() const
 {
+  if (!dirty) return;
   float cosinus = glm::cos(rotation);
   float sinus = glm::sin(rotation);
 
@@ -54,34 +50,6 @@ void phys2d::TransformComponent::updateMatrix() const
         glm::vec3(0.0f,      0.0f,    1.0f)
     );
   dirty = false;
-}
-
-bool phys2d::TransformComponent::isDirty() const {
-  return dirty;
-}
-
-const glm::vec2 phys2d::TransformComponent::getPosition() const
-{
-  return position;
-}
-
-float phys2d::TransformComponent::getRotation() const
-{
-  return rotation;
-}
-
-const glm::vec2 phys2d::TransformComponent::getScale() const
-{
-  return scaling;
-}
-
-const glm::mat3& phys2d::TransformComponent::getModelMatrix() const
-{
-  if (dirty) {
-    updateMatrix();
-    dirty = false;
-  }
-  return model_matrix;
 }
 
 const glm::vec2 phys2d::TransformComponent::getForward() const
@@ -117,8 +85,12 @@ void phys2d::TransformComponent::rotate(float angle_delta)
 {
   rotation += angle_delta;
   if (rotation >= 2 * phys2d::pi) {
-    short circles = rotation / (2 * phys2d::pi);
+    int circles = rotation / (2 * phys2d::pi);
     rotation -= circles * 2 * phys2d::pi;
+  }
+  if (rotation <= -2 * phys2d::pi) {
+    int circles = abs(rotation / 2 * phys2d::pi);
+    rotation += circles * 2 * phys2d::pi;
   }
   dirty = true;
 }
