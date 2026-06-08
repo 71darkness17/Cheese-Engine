@@ -1,11 +1,6 @@
 #include <types.hpp>
 #include <glm/glm.hpp>
 #include <stdexcept>
-#include <cmath>
-
-inline float phys2d::round(float x) {
-    return std::round(x * 1'000'000.f) / 1'000'000.f;
-}
 
 phys2d::AABB::AABB(
   const glm::vec2& lb, 
@@ -84,13 +79,9 @@ void phys2d::TransformComponent::move(const glm::vec2& direction)
 void phys2d::TransformComponent::rotate(float angle_delta)
 {
   rotation += angle_delta;
-  if (rotation >= 2 * phys2d::pi) {
-    int circles = rotation / (2 * phys2d::pi);
-    rotation -= circles * 2 * phys2d::pi;
-  }
-  if (rotation <= -2 * phys2d::pi) {
-    int circles = abs(rotation / 2 * phys2d::pi);
-    rotation += circles * 2 * phys2d::pi;
+  if (abs(rotation) >= phys2d::pi2) {
+    int circles = rotation / phys2d::pi2;
+    rotation -= circles * phys2d::pi2;
   }
   dirty = true;
 }
@@ -99,4 +90,20 @@ void phys2d::TransformComponent::scale(const glm::vec2& scale_coefs)
 {
   scaling *= scale_coefs;
   dirty = true;
+}
+
+phys2d::RigidBodyComponent::RigidBodyComponent(phys2d::BodyType bt): bodyType(bt)
+{
+
+}
+
+phys2d::RigidBodyComponent::RigidBodyComponent(BodyType bt, const glm::vec2& linearVelocity, const glm::vec2& force, 
+  float gravityScale, float angularVelocity, float torque, float mass, float inertia, 
+  float linearDamping, float angularDamping, float restitution, float friction):
+  bodyType(bt), linearVelocity(linearVelocity), force(force),
+  gravityScale(gravityScale), angularVelocity(angularVelocity), torque(torque), invMass((mass == 0) ? 0 : 1/mass),
+  invInertia((inertia == 0) ? 0 : 1/inertia), linearDamping(linearDamping), angularDamping(angularDamping),
+  restitution(restitution), friction(friction)
+{
+  
 }
