@@ -3,9 +3,20 @@
 
 namespace phys2d {
 
-inline constexpr double pi = 3.141592653589793238462;
-inline constexpr double epsilon = 1e-6;
-float round(float n);
+/* Trigonometry */
+constexpr float pi = 3.14159265;
+constexpr float pi2 = pi*2;
+
+/* Precision*/
+constexpr float epsilon = 1e-6;
+
+/* RigidBody*/
+constexpr float rb_defaultDamping = 0.01f;
+constexpr float rb_defaultRestitution = 0.5f;
+constexpr float rb_defaultFriction = 0.2f;
+constexpr float rb_defaultInvMass = 1.0f;
+constexpr float rb_defaultInvInertia = 1.0f;
+constexpr float rb_defaultGravityScale = 1.0f;
 
 enum class BodyType {
   Static,    ///< zero mass, zero velocity, can be manually moved
@@ -131,17 +142,54 @@ struct TransformComponent {
   void scale(const glm::vec2& scale_coefs);
 };
 
-class RigidBodyComponent {
-private:
-  BodyType bodyType;            ///< type of the object, used for movement
-  glm::vec2 linearVelocity;     ///< direction of movement 
-  float angularVelocity;        ///< direction of angular movement
-  glm::vec2 linearAcceleration; ///< acceleration
-  float angularAcceleration;    ///< WOWOWOWOW angular acceleration
-  float mass;                   ///< mass of the object(needed if the real physical laws are enabled)
+struct RigidBodyComponent {
+  BodyType bodyType = BodyType::Dynamic;       ///< bodyType: Static, Kinematic or Dynamic
 
-public:
+  glm::vec2 linearVelocity{0.0f, 0.0f};        ///< velocity along some axis
+  glm::vec2 force{0.0f, 0.0f};                 ///< force: two-dimensional vector
+  float gravityScale = rb_defaultGravityScale; ///< gravity scale, 1 by default
 
+  float angularVelocity = 0.0f;                ///< angular velocity, in radians clockwise
+  float torque = 0.0f;                         ///< torque, in radians clockwise
+
+  float invMass = rb_defaultInvMass;           ///< inverted mass coefficient, used for calculating linear acceleration
+  float invInertia = rb_defaultInvInertia;     ///< inverted inertia, used for calculating angular acceleration, in radians clockwise
+
+  float linearDamping = rb_defaultDamping;     ///< linear damping of the object, from 0 to 1
+  float angularDamping = rb_defaultDamping;    ///< angular damping of the object, from 0 to 1
+
+  float restitution = rb_defaultRestitution;   ///< restitution of the object, 0.5 by default
+  float friction = rb_defaultFriction;         ///< friction of the object, 0.2 by default
+
+  /**
+   * @brief default RigidBodyComponent constructor
+   */
+  RigidBodyComponent() = default;
+
+  /**
+   * @brief RigidBodyComponent c-tor that uses only BodyType parameter, other fields are set by default
+   * @param bt: BodyType value, Static, Kinematic or Dynamic
+   */
+  RigidBodyComponent(phys2d::BodyType bt);
+
+  /**
+   * @brief RigidBody c-tor, requires all fields to be customly set
+   * @param bt: BodyType of the object: Static/Kinematic/Dynamic
+   * @param linearVelocity: velocity along some axis
+   * @param force: force: two-dimensional vector
+   * @param gravityScale: gravity scale, 1 by default
+   * @param angularVelocity: angular velocity, in radians clockwise
+   * @param torque: torque, in radians, clockwise
+   * @param mass: mass of the object
+   * @param inertia: inertia of the object, in radians, clockwise
+   * @param linearDamping: damping, coefficient from 0 to 1
+   * @param angularDamping: angularDamping, coefficient from 0 to 1
+   * @param restitiution: physical restitution, 0.5 by default
+   * @param friction: physical friction, 0.2 by default
+   */
+  RigidBodyComponent(BodyType bt, const glm::vec2& linearVelocity, const glm::vec2& force, 
+    float gravityScale, float angularVelocity, float torque, float mass, float inertia, 
+    float linearDamping, float angularDamping, float restitution, float friction);
 };
 
 class ColliderComponent {
