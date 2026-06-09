@@ -1,6 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
-
+#include <variant>
 namespace phys2d {
 
 /* Trigonometry */
@@ -17,6 +17,10 @@ constexpr float rb_defaultFriction = 0.2f;
 constexpr float rb_defaultInvMass = 1.0f;
 constexpr float rb_defaultInvInertia = 1.0f;
 constexpr float rb_defaultGravityScale = 1.0f;
+
+/* Collider */
+constexpr glm::vec2 cd_defaultLocalOffset = {0.0f, 0.0f};
+constexpr bool cd_defaultTriggerStatus = false;
 
 enum class BodyType {
   Static,    ///< zero mass, zero velocity, can be manually moved
@@ -67,7 +71,7 @@ struct TransformComponent {
   glm::vec2 scaling{1.0f};              ///< scaling coefficients for x-axis and y-axis respectively
   
   mutable bool dirty{true};             ///< should we update model_matrix or not
-  mutable glm::mat3 model_matrix{1.0f}; ///< model matrix for MVP-rendering
+  mutable glm::mat3 modelMatrix{1.0f}; ///< model matrix for MVP-rendering
 
   /**
    * @brief  recalculates the model matrix
@@ -192,41 +196,44 @@ struct RigidBodyComponent {
     float linearDamping, float angularDamping, float restitution, float friction);
 };
 
-class ColliderComponent {
-private:
-  
+struct PolygonGeometry {
+  std::vector<glm::vec2> vertices;
+  std::vector<glm::vec2> normals;
+  void calculateNormals();
+};
+
+struct CircleGeometry {
+  float radius;
+};
+
+using ShapeData = std::variant<PolygonGeometry, CircleGeometry>;
+
+namespace ColliderLayers {
+  constexpr uint32_t None             = 0x0000;
+  constexpr uint32_t Player           = 0x0001;
+  constexpr uint32_t PlayerProjectile = 0x0002;
+  constexpr uint32_t Enemy            = 0x0004;
+  constexpr uint32_t EnemyProjectile  = 0x0008;
+  constexpr uint32_t Environment      = 0x0010;
+  constexpr uint32_t All              = 0xFFFF;
+}
+
+struct ColliderComponent {
   BodyShape shapeType; ///< shape of the object: polygon, circle, segment etc
+  ShapeData shapeData; ///< shape data: vertices, radius, borders etc
+  glm::vec2 localOffset = cd_defaultLocalOffset;
+  bool isTrigger = cd_defaultTriggerStatus;
+  uint32_t categoryBits = ColliderLayers::Player;
+  uint32_t maskBits = ColliderLayers::All;
 
-  union ShapeData { ///< Data
-    struct { std::vector<glm::vec2> vertices;   } polygon;
-    struct { float radius;                      } circle;
-    struct { float rectangle_len; float radius; } capsule;
-    struct { glm::vec2 borders;                 } segment;
-    struct { std::vector<glm::vec2> chain;      } segmentChain;
-  } shapeData;
+  ColliderComponent();
+  ColliderComponent(const BodyShape& st);
+  template <typename Geometry>
+  ColliderComponent(Geometry&& geom, const glm::vec2& offset = cd_defaultLocalOffset, bool trigger = cd_defaultTriggerStatus);
 
-public:
-  AABB getAABB();
-
-  /// @name Gettters
-  /// @{
-  const std::vector<glm::vec2> getPolygonVertices() const;
-  const float getCircleRadius() const;
-  const float getCapsuleRadius() const;
-  const float getCapsuleLength() const;
-  const glm::vec2 getSegmentBorders() const;
-  const std::vector<glm::vec2> getSegmentChainBorders() const;
-  /// @}
-
-  /// @name Setters
-  /// @{
-  void  getPolygonVertices(const std::vector<glm::vec2>& vertices);
-  void  getCircleRadius(const float radius);
-  void  getCapsuleRadius(const float radius);
-  void  getCapsuleLength(const float length);
-  void  getSegmentBorders(const glm::vec2& borders);
-  void  getSegmentChainBorders(const std::vector<glm::vec2>& borders);
-  /// @}
+  AABB getAABB(const TransformComponent& tc) const;
+  const CircleGeometry* getCircle() const;
+  const PolygonGeometry* getPolygon() const;
 };
 
 } /* PhysicsEngine */
