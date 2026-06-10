@@ -3,9 +3,11 @@
 #include <variant>
 namespace phys2d {
 
-/* Trigonometry */
+  
+/* Maths */
 constexpr float pi = 3.14159265;
 constexpr float pi2 = pi*2;
+constexpr float inf = 2e5;
 
 /* Precision*/
 constexpr float epsilon = 1e-6;
@@ -199,6 +201,8 @@ struct RigidBodyComponent {
 struct PolygonGeometry {
   std::vector<glm::vec2> vertices;
   std::vector<glm::vec2> normals;
+  PolygonGeometry() = default;
+  PolygonGeometry(const std::vector<glm::vec2>& vertices);
   void calculateNormals();
 };
 
@@ -224,16 +228,37 @@ struct ColliderComponent {
   glm::vec2 localOffset = cd_defaultLocalOffset;
   bool isTrigger = cd_defaultTriggerStatus;
   uint32_t categoryBits = ColliderLayers::Player;
-  uint32_t maskBits = ColliderLayers::All;
+  uint32_t maskBits = ColliderLayers::All & ~ColliderLayers::PlayerProjectile;
 
   ColliderComponent();
   ColliderComponent(const BodyShape& st);
   template <typename Geometry>
-  ColliderComponent(Geometry&& geom, const glm::vec2& offset = cd_defaultLocalOffset, bool trigger = cd_defaultTriggerStatus);
-
-  AABB getAABB(const TransformComponent& tc) const;
+  ColliderComponent(
+    Geometry&& geom, 
+    const glm::vec2& offset = cd_defaultLocalOffset,
+    bool trigger = cd_defaultTriggerStatus, 
+    uint32_t categoryBits = ColliderLayers::Player, 
+    uint32_t maskBits = ColliderLayers::All & ~ColliderLayers::PlayerProjectile):
+      localOffset(offset),
+      isTrigger(trigger),
+      categoryBits(categoryBits),
+      maskBits(maskBits) 
+  {
+    if constexpr (std::is_same_v<std::decay_t<Geometry>, phys2d::PolygonGeometry>) {
+      shapeType = phys2d::BodyShape::Polygon;
+      *getPolygon() = std::forward<Geometry>(geom);
+    } else if constexpr (std::is_same_v<std::decay_t<Geometry>, phys2d::CircleGeometry>) {
+      shapeType = phys2d::BodyShape::Circle;
+      *getCircle() = std::forward<Geometry>(geom);
+    }
+  }
+  
+  CircleGeometry* getCircle();
   const CircleGeometry* getCircle() const;
+
+  PolygonGeometry* getPolygon();
   const PolygonGeometry* getPolygon() const;
+  AABB getAABB(const TransformComponent& tc) const;
 };
 
 } /* PhysicsEngine */

@@ -1,5 +1,6 @@
 #include <types.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
 phys2d::AABB::AABB(
@@ -39,10 +40,10 @@ void phys2d::TransformComponent::updateMatrix() const
   float cosinus = glm::cos(rotation);
   float sinus = glm::sin(rotation);
 
-  model_matrix = glm::mat3(
-        glm::vec3(cosinus * scaling.x,  -sinus * scaling.y, position.x),
-        glm::vec3(sinus * scaling.x,   cosinus * scaling.y, position.y),
-        glm::vec3(0.0f,      0.0f,    1.0f)
+  modelMatrix = glm::mat3(
+        glm::vec3(cosinus * scaling.x,  -sinus * scaling.y, 0),
+        glm::vec3(sinus * scaling.x,   cosinus * scaling.y, 0),
+        glm::vec3(position.x,      position.y,    1.0f)
     );
   dirty = false;
 }
@@ -106,4 +107,85 @@ phys2d::RigidBodyComponent::RigidBodyComponent(BodyType bt, const glm::vec2& lin
   restitution(restitution), friction(friction)
 {
   
+}
+
+phys2d::PolygonGeometry::PolygonGeometry(const std::vector<glm::vec2>& vertices): vertices(vertices)
+{
+  calculateNormals();
+}
+
+void phys2d::PolygonGeometry::calculateNormals()
+{
+  normals.clear();
+  size_t count = vertices.size();
+  normals.resize(count);
+  
+  for (size_t i = 0; i < count; ++i) {
+    glm::vec2 edge = vertices[(i + 1) % count] - vertices[i];
+    glm::vec2 normal = glm::normalize(glm::vec2(-edge.y, edge.x));
+    normals[i] = normal;
+  }
+}
+
+phys2d::ColliderComponent::ColliderComponent(): 
+  shapeType(phys2d::BodyShape::Circle)
+{
+  CircleGeometry cg;
+  cg.radius = 1.0f;
+  shapeData = ShapeData(cg);
+}
+
+phys2d::ColliderComponent::ColliderComponent(const phys2d::BodyShape& st):
+  shapeType(st)
+{
+  if (st == phys2d::BodyShape::Circle) {
+    getCircle()->radius = 1;
+  } else if (st == phys2d::BodyShape::Polygon) {
+    getPolygon()->vertices = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
+    getPolygon()->calculateNormals();
+  } else {
+    throw std::logic_error("Incorrect Geometry type!");
+  }
+}
+
+phys2d::CircleGeometry* phys2d::ColliderComponent::getCircle()
+{
+  return &std::get<CircleGeometry>(shapeData);
+}
+
+const phys2d::CircleGeometry* phys2d::ColliderComponent::getCircle() const
+{
+  return &std::get<CircleGeometry>(shapeData);
+}
+
+const phys2d::PolygonGeometry* phys2d::ColliderComponent::getPolygon() const
+{
+  return &std::get<PolygonGeometry>(shapeData);
+}
+
+phys2d::PolygonGeometry* phys2d::ColliderComponent::getPolygon()
+{
+  return &std::get<PolygonGeometry>(shapeData);
+}
+
+phys2d::AABB phys2d::ColliderComponent::getAABB(const TransformComponent& tc) const
+{
+  tc.updateMatrix();
+  if (shapeType == phys2d::BodyShape::Circle) {
+    float r = getCircle()->radius;
+    return AABB({tc.position.x - r, tc.position.y - r}, {tc.position.x + r, tc.position.y + r});
+  } else if (shapeType == phys2d::BodyShape::Polygon) {
+    float x_min = phys2d::inf, y_min = phys2d::inf;
+    float x_max = -phys2d::inf, y_max = -phys2d::inf;
+    for (auto vertex : getPolygon()->vertices) {
+      glm::vec3 tmp = {vertex.x, vertex.y, 1.0f};
+      glm::vec2 modified = glm::vec2(tc.modelMatrix * tmp);
+      x_min = glm::min(x_min, modified.x);
+      x_max = glm::max(x_max, modified.x);
+      y_min = glm::min(y_min, modified.y);
+      y_max = glm::max(y_max, modified.y);
+    }
+    return AABB({x_min, y_min}, {x_max, y_max});
+  }
+  throw std::logic_error("ColliderComponent has invalid shapeType");
 }
