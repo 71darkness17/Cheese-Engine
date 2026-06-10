@@ -2,6 +2,7 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <variant>
+#include <entt/entt.hpp>
 namespace phys2d {
 
 /* Maths */
