@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <variant>
+#include <entt/entt.hpp>
 namespace phys2d {
 
   
@@ -259,6 +260,51 @@ struct ColliderComponent {
   PolygonGeometry* getPolygon();
   const PolygonGeometry* getPolygon() const;
   AABB getAABB(const TransformComponent& tc) const;
+};
+
+struct CollisionManifold {
+    entt::entity entityA;
+    entt::entity entityB;
+    
+    glm::vec2 normal;
+    float penetration;
+    
+    std::vector<glm::vec2> contactPoints; 
+};
+
+class PhysicsSystem {
+public:
+  PhysicsSystem(entt::registry& registry);
+ 
+  void update(float dt);
+
+  void setGravity(const glm::vec2& g);
+  glm::vec2 getGravity() const;
+  void setRegistry(entt::registry& resistry);
+private:
+  
+  void integrateForcesAndVelocities(float dt);
+
+  void checkCollisions();
+
+  void resolveCollisions(float dt);
+
+  bool collideCircleVsCircle(entt::entity eA, const TransformComponent& tA, const CircleGeometry& cA,
+                              entt::entity eB, const TransformComponent& tB, const CircleGeometry& cB);
+                              
+  bool collideCircleVsPolygon(entt::entity eCircle, const TransformComponent& tCircle, const CircleGeometry& circle,
+                              entt::entity ePoly, const TransformComponent& tPoly, const PolygonGeometry& poly, 
+                              bool flipNormal);
+                              
+  bool collidePolygonVsPolygon(entt::entity eA, const TransformComponent& tA, const PolygonGeometry& pA,
+                                entt::entity eB, const TransformComponent& tB, const PolygonGeometry& pB);
+  
+private:
+  glm::vec2 gravity{0.0f, 0.0f};
+  std::vector<CollisionManifold> contacts;
+  entt::registry* registry;
+  const int velocityIterations = 6;
+  const int positionIterations = 2;
 };
 
 } /* PhysicsEngine */

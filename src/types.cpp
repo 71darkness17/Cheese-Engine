@@ -189,3 +189,59 @@ phys2d::AABB phys2d::ColliderComponent::getAABB(const TransformComponent& tc) co
   }
   throw std::logic_error("ColliderComponent has invalid shapeType");
 }
+
+phys2d::PhysicsSystem::PhysicsSystem(entt::registry& registry): registry(&registry)
+{
+
+}
+
+void phys2d::PhysicsSystem::update(float dt)
+{
+  if (registry == nullptr) {
+    return;
+  }
+  this->integrateForcesAndVelocities(dt);
+  //this->checkCollisions();
+  //this->resolveCollisions(dt);
+}
+
+void phys2d::PhysicsSystem::setGravity(const glm::vec2& new_gravity)
+{
+  gravity = new_gravity;
+}
+
+glm::vec2 phys2d::PhysicsSystem::getGravity() const
+{
+  return gravity;
+}
+
+void phys2d::PhysicsSystem::integrateForcesAndVelocities(float dt)
+{
+  auto view = registry->view<RigidBodyComponent, TransformComponent>();
+  for (entt::entity entity: view) {
+    auto& rb = view.get<RigidBodyComponent>(entity);
+    auto& tc = view.get<TransformComponent>(entity);
+
+    if (rb.bodyType == phys2d::BodyType::Static) continue;
+
+    glm::vec2 acceleration = rb.force * rb.invMass;
+    if (rb.bodyType == BodyType::Dynamic) {
+        acceleration += gravity * rb.gravityScale;
+    }
+
+    rb.linearVelocity += acceleration * dt;
+
+    rb.linearVelocity *= glm::clamp(1.0f - rb.linearDamping * dt, 0.0f, 1.0f);
+
+    tc.move(rb.linearVelocity * dt);
+
+    float angularAcceleration = rb.torque * rb.invInertia;
+    rb.angularVelocity += angularAcceleration * dt;
+    rb.angularVelocity *= glm::clamp(1.0f - rb.angularDamping * dt, 0.0f, 1.0f);
+
+    tc.rotate(rb.angularVelocity * dt);
+
+    rb.force = glm::vec2(0.0f);
+    rb.torque = 0.0f;
+  }
+}
