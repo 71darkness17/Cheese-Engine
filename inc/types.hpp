@@ -71,7 +71,7 @@ bool checkCollision(const AABB& aabb1, const AABB& aabb2);
 struct TransformComponent {
   glm::vec2 position{0.0f, 0.0f};       ///< global position of the object on the grid
   float rotation{0.0f};                 ///< rotation angle of the object, clockwise
-  glm::vec2 scaling{1.0f};              ///< scaling coefficients for x-axis and y-axis respectively
+  float scaling{1.0f};                  ///< scaling coefficient
   
   mutable bool dirty{true};             ///< should we update model_matrix or not
   mutable glm::mat3 modelMatrix{1.0f}; ///< model matrix for MVP-rendering
@@ -91,7 +91,7 @@ struct TransformComponent {
   /**
    * @brief constructor for TransformComponent with all fields
    */
-  TransformComponent(const glm::vec2& position, float rotation, const glm::vec2& scaling);
+  TransformComponent(const glm::vec2& position, float rotation, float scaling);
 
   /**
    * @brief  gives the forward vector of an object. Can be used for cannons and bullets, for example
@@ -118,10 +118,10 @@ struct TransformComponent {
 
   /**
    * @brief  sets the new object's scaling coefficients
-   * @param new_scale: new scale of the object along x-axis and y-axis respectively
+   * @param new_scale: new scale of the object
    * @retval None
    */
-  void setScale(const glm::vec2& new_scale);
+  void setScale(float new_scale);
   /// @}
 
   /**
@@ -143,10 +143,10 @@ struct TransformComponent {
 
   /**
    * @brief  scales the object
-   * @param  scale_coefs: scaling coefs to multiply
+   * @param  scale_coef: scaling coef to multiply
    * @retval None
    */
-  void scale(const glm::vec2& scale_coefs);
+  void scale(float scale_coef);
 };
 
 struct RigidBodyComponent {
@@ -246,9 +246,11 @@ struct ColliderComponent {
       maskBits(maskBits) 
   {
     if constexpr (std::is_same_v<std::decay_t<Geometry>, phys2d::PolygonGeometry>) {
+      shapeData = PolygonGeometry();
       shapeType = phys2d::BodyShape::Polygon;
       *getPolygon() = std::forward<Geometry>(geom);
     } else if constexpr (std::is_same_v<std::decay_t<Geometry>, phys2d::CircleGeometry>) {
+      shapeData = CircleGeometry();
       shapeType = phys2d::BodyShape::Circle;
       *getCircle() = std::forward<Geometry>(geom);
     }
@@ -281,6 +283,10 @@ public:
   void setGravity(const glm::vec2& g);
   glm::vec2 getGravity() const;
   void setRegistry(entt::registry& resistry);
+  
+  // not permanent
+  const std::vector<CollisionManifold>& getContacts() const { return contacts; }
+  void clearContacts() { contacts.clear(); }
 private:
   
   void integrateForcesAndVelocities(float dt);
@@ -289,8 +295,8 @@ private:
 
   void resolveCollisions(float dt);
 
-  bool collideCircleVsCircle(entt::entity eA, const TransformComponent& tA, const CircleGeometry& cA,
-                              entt::entity eB, const TransformComponent& tB, const CircleGeometry& cB);
+  bool collideCircleVsCircle(entt::entity e1, const TransformComponent& tc1, const CircleGeometry& geometry1,
+                              entt::entity e2, const TransformComponent& tc2, const CircleGeometry& geometry2);
                               
   bool collideCircleVsPolygon(entt::entity eCircle, const TransformComponent& tCircle, const CircleGeometry& circle,
                               entt::entity ePoly, const TransformComponent& tPoly, const PolygonGeometry& poly, 

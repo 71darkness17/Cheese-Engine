@@ -3,7 +3,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
-phys2d::AABB::AABB(
+namespace phys2d {
+
+AABB::AABB(
   const glm::vec2& lb, 
   const glm::vec2& ub): lowerBound(lb), upperBound(ub)
 {
@@ -13,7 +15,7 @@ phys2d::AABB::AABB(
   }
 }
 
-bool phys2d::AABB::collidesWith(const AABB& other) const
+bool AABB::collidesWith(const AABB& other) const
 {
   return lowerBound.x <= other.upperBound.x &&
          upperBound.x >= other.lowerBound.x &&
@@ -21,63 +23,63 @@ bool phys2d::AABB::collidesWith(const AABB& other) const
          upperBound.y >= other.lowerBound.y;
 }
 
-bool phys2d::checkCollision(const AABB& aabb1, const AABB& aabb2)
+bool checkCollision(const AABB& aabb1, const AABB& aabb2)
 {
   return aabb1.collidesWith(aabb2);
 }
 
-phys2d::TransformComponent::TransformComponent(
+TransformComponent::TransformComponent(
   const glm::vec2& position, 
   float rotation, 
-  const glm::vec2& scaling): position(position), rotation(rotation), scaling(scaling), dirty(true)
+  float scaling): position(position), rotation(rotation), scaling(scaling), dirty(true)
 {
 
 }
 
-void phys2d::TransformComponent::updateMatrix() const
+void TransformComponent::updateMatrix() const
 {
   if (!dirty) return;
   float cosinus = glm::cos(rotation);
   float sinus = glm::sin(rotation);
 
   modelMatrix = glm::mat3(
-        glm::vec3(cosinus * scaling.x,  -sinus * scaling.y, 0),
-        glm::vec3(sinus * scaling.x,   cosinus * scaling.y, 0),
+        glm::vec3(cosinus * scaling,  -sinus * scaling, 0),
+        glm::vec3(sinus * scaling,   cosinus * scaling, 0),
         glm::vec3(position.x,      position.y,    1.0f)
     );
   dirty = false;
 }
 
-const glm::vec2 phys2d::TransformComponent::getForward() const
+const glm::vec2 TransformComponent::getForward() const
 {
   return glm::vec2(glm::cos(rotation), -glm::sin(rotation));
 }
 
-void phys2d::TransformComponent::setPosition(const glm::vec2& new_position)
+void TransformComponent::setPosition(const glm::vec2& new_position)
 {
   position = new_position;
   dirty = true;
 }
 
-void phys2d::TransformComponent::setRotation(float new_angle)
+void TransformComponent::setRotation(float new_angle)
 {
   rotation = new_angle;
   dirty = true;
 }
 
-void phys2d::TransformComponent::setScale(const glm::vec2& new_scale)
+void TransformComponent::setScale(float new_scale)
 {
   scaling = new_scale;
   dirty = true;
 }
 
-void phys2d::TransformComponent::move(const glm::vec2& direction)
+void TransformComponent::move(const glm::vec2& direction)
 {
   position += direction;
   dirty = true;
 }
 
-void phys2d::TransformComponent::rotate(float angle_delta)
+void TransformComponent::rotate(float angle_delta)
 {
   rotation += angle_delta;
   if (abs(rotation) >= phys2d::pi2) {
@@ -87,18 +89,18 @@ void phys2d::TransformComponent::rotate(float angle_delta)
   dirty = true;
 }
 
-void phys2d::TransformComponent::scale(const glm::vec2& scale_coefs)
+void TransformComponent::scale(float scale_coef)
 {
-  scaling *= scale_coefs;
+  scaling *= scale_coef;
   dirty = true;
 }
 
-phys2d::RigidBodyComponent::RigidBodyComponent(phys2d::BodyType bt): bodyType(bt)
+RigidBodyComponent::RigidBodyComponent(BodyType bt): bodyType(bt)
 {
 
 }
 
-phys2d::RigidBodyComponent::RigidBodyComponent(BodyType bt, const glm::vec2& linearVelocity, const glm::vec2& force, 
+RigidBodyComponent::RigidBodyComponent(BodyType bt, const glm::vec2& linearVelocity, const glm::vec2& force, 
   float gravityScale, float angularVelocity, float torque, float mass, float inertia, 
   float linearDamping, float angularDamping, float restitution, float friction):
   bodyType(bt), linearVelocity(linearVelocity), force(force),
@@ -109,12 +111,12 @@ phys2d::RigidBodyComponent::RigidBodyComponent(BodyType bt, const glm::vec2& lin
   
 }
 
-phys2d::PolygonGeometry::PolygonGeometry(const std::vector<glm::vec2>& vertices): vertices(vertices)
+PolygonGeometry::PolygonGeometry(const std::vector<glm::vec2>& vertices): vertices(vertices)
 {
   calculateNormals();
 }
 
-void phys2d::PolygonGeometry::calculateNormals()
+void PolygonGeometry::calculateNormals()
 {
   normals.clear();
   size_t count = vertices.size();
@@ -127,20 +129,23 @@ void phys2d::PolygonGeometry::calculateNormals()
   }
 }
 
-phys2d::ColliderComponent::ColliderComponent(): 
-  shapeType(phys2d::BodyShape::Circle)
+ColliderComponent::ColliderComponent(): 
+  shapeType(BodyShape::Circle)
 {
   CircleGeometry cg;
   cg.radius = 1.0f;
   shapeData = ShapeData(cg);
 }
 
-phys2d::ColliderComponent::ColliderComponent(const phys2d::BodyShape& st):
+ColliderComponent::ColliderComponent(const BodyShape& st):
   shapeType(st)
 {
-  if (st == phys2d::BodyShape::Circle) {
+  if (st == BodyShape::Circle) {
+    shapeData = CircleGeometry();
     getCircle()->radius = 1;
-  } else if (st == phys2d::BodyShape::Polygon) {
+    
+  } else if (st == BodyShape::Polygon) {
+    shapeData = PolygonGeometry();
     getPolygon()->vertices = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
     getPolygon()->calculateNormals();
   } else {
@@ -148,35 +153,35 @@ phys2d::ColliderComponent::ColliderComponent(const phys2d::BodyShape& st):
   }
 }
 
-phys2d::CircleGeometry* phys2d::ColliderComponent::getCircle()
+CircleGeometry* ColliderComponent::getCircle()
 {
   return &std::get<CircleGeometry>(shapeData);
 }
 
-const phys2d::CircleGeometry* phys2d::ColliderComponent::getCircle() const
+const CircleGeometry* ColliderComponent::getCircle() const
 {
   return &std::get<CircleGeometry>(shapeData);
 }
 
-const phys2d::PolygonGeometry* phys2d::ColliderComponent::getPolygon() const
+const PolygonGeometry* ColliderComponent::getPolygon() const
 {
   return &std::get<PolygonGeometry>(shapeData);
 }
 
-phys2d::PolygonGeometry* phys2d::ColliderComponent::getPolygon()
+PolygonGeometry* ColliderComponent::getPolygon()
 {
   return &std::get<PolygonGeometry>(shapeData);
 }
 
-phys2d::AABB phys2d::ColliderComponent::getAABB(const TransformComponent& tc) const
+AABB ColliderComponent::getAABB(const TransformComponent& tc) const
 {
   tc.updateMatrix();
-  if (shapeType == phys2d::BodyShape::Circle) {
+  if (shapeType == BodyShape::Circle) {
     float r = getCircle()->radius;
     return AABB({tc.position.x - r, tc.position.y - r}, {tc.position.x + r, tc.position.y + r});
-  } else if (shapeType == phys2d::BodyShape::Polygon) {
-    float x_min = phys2d::inf, y_min = phys2d::inf;
-    float x_max = -phys2d::inf, y_max = -phys2d::inf;
+  } else if (shapeType == BodyShape::Polygon) {
+    float x_min = inf, y_min = inf;
+    float x_max = -inf, y_max = -inf;
     for (auto vertex : getPolygon()->vertices) {
       glm::vec3 tmp = {vertex.x, vertex.y, 1.0f};
       glm::vec2 modified = glm::vec2(tc.modelMatrix * tmp);
@@ -190,39 +195,40 @@ phys2d::AABB phys2d::ColliderComponent::getAABB(const TransformComponent& tc) co
   throw std::logic_error("ColliderComponent has invalid shapeType");
 }
 
-phys2d::PhysicsSystem::PhysicsSystem(entt::registry& registry): registry(&registry)
+PhysicsSystem::PhysicsSystem(entt::registry& registry): registry(&registry)
 {
 
 }
 
-void phys2d::PhysicsSystem::update(float dt)
+void PhysicsSystem::update(float dt)
 {
+  contacts.clear();
   if (registry == nullptr) {
     return;
   }
-  this->integrateForcesAndVelocities(dt);
-  //this->checkCollisions();
+  integrateForcesAndVelocities(dt);
+  checkCollisions();
   //this->resolveCollisions(dt);
 }
 
-void phys2d::PhysicsSystem::setGravity(const glm::vec2& new_gravity)
+void PhysicsSystem::setGravity(const glm::vec2& new_gravity)
 {
   gravity = new_gravity;
 }
 
-glm::vec2 phys2d::PhysicsSystem::getGravity() const
+glm::vec2 PhysicsSystem::getGravity() const
 {
   return gravity;
 }
 
-void phys2d::PhysicsSystem::integrateForcesAndVelocities(float dt)
+void PhysicsSystem::integrateForcesAndVelocities(float dt)
 {
   auto view = registry->view<RigidBodyComponent, TransformComponent>();
   for (entt::entity entity: view) {
     auto& rb = view.get<RigidBodyComponent>(entity);
     auto& tc = view.get<TransformComponent>(entity);
 
-    if (rb.bodyType == phys2d::BodyType::Static) continue;
+    if (rb.bodyType == BodyType::Static) continue;
 
     glm::vec2 acceleration = rb.force * rb.invMass;
     if (rb.bodyType == BodyType::Dynamic) {
@@ -245,3 +251,80 @@ void phys2d::PhysicsSystem::integrateForcesAndVelocities(float dt)
     rb.torque = 0.0f;
   }
 }
+
+void PhysicsSystem::checkCollisions()
+{
+  auto view = registry->view<ColliderComponent, TransformComponent>();
+  for (auto it1 = view.begin(); it1 != view.end(); ++it1) {
+    for (auto it2 = std::next(it1); it2 != view.end(); ++it2) {
+      entt::entity e1 = *it1;
+      entt::entity e2 = *it2;
+
+      const ColliderComponent& cc1 = view.get<ColliderComponent>(e1);
+      const ColliderComponent& cc2 = view.get<ColliderComponent>(e2);
+
+      // Check whether the entities can collide
+      if ((cc1.categoryBits & cc2.maskBits) == 0 || 
+          (cc2.categoryBits & cc1.maskBits) == 0) continue;
+
+      const RigidBodyComponent* rbc1 = registry->try_get<RigidBodyComponent>(e1);
+      const RigidBodyComponent* rbc2 = registry->try_get<RigidBodyComponent>(e2);
+      if (rbc1 != nullptr &&
+          rbc2 != nullptr &&
+          rbc1->bodyType == BodyType::Static && 
+          rbc2->bodyType == BodyType::Static) continue;
+      
+      const TransformComponent& tc1 = view.get<TransformComponent>(e1);
+      const TransformComponent& tc2 = view.get<TransformComponent>(e2);
+      
+      // Broadphase
+      // checking AABB
+      if (!cc1.getAABB(tc1).collidesWith(cc2.getAABB(tc2))) continue;
+
+      // Narrowphase
+      // check collision by shapes
+      if (cc1.shapeType == BodyShape::Polygon && cc2.shapeType == BodyShape::Polygon) {
+        //collidePolygonVsPolygon(e1, tc1, *cc1.getPolygon(), e2, tc2, *cc2.getPolygon());
+      } else if (cc1.shapeType == BodyShape::Circle && cc2.shapeType == BodyShape::Circle) {
+        collideCircleVsCircle(e1, tc1, *cc1.getCircle(), e2, tc2, *cc2.getCircle());
+      } else if (cc1.shapeType == BodyShape::Circle && cc2.shapeType == BodyShape::Polygon) {
+        //collideCircleVsPolygon(e1, tc1, *cc1.getCircle(), e2, tc2, *cc2.getPolygon(), false);
+      } else if (cc1.shapeType == BodyShape::Polygon && cc2.shapeType == BodyShape::Circle) {
+        //collideCircleVsPolygon(e2, tc2, *cc2.getCircle(), e1, tc1, *cc1.getPolygon(), true);
+      }
+    }
+  }
+}
+
+bool PhysicsSystem::collideCircleVsCircle(
+  entt::entity              e1, 
+  const TransformComponent& tc1, 
+  const CircleGeometry&     geometry1,
+  entt::entity              e2, 
+  const TransformComponent& tc2, 
+  const CircleGeometry&     geometry2)
+{
+  glm::vec2 from_1_to_2 = tc2.position - tc1.position;
+  float distance = glm::sqrt(glm::dot(from_1_to_2, from_1_to_2));
+  float radius_sum = geometry1.radius * tc1.scaling + geometry2.radius * tc2.scaling;
+  if (distance >= radius_sum) {
+    return false;
+  }
+
+  CollisionManifold manifold;
+  manifold.entityA = e1;
+  manifold.entityB = e2;
+  manifold.penetration = radius_sum - distance;
+
+  if (distance < phys2d::epsilon) {
+    // circles have centers in the same point
+    // make syntetic normal
+    manifold.normal = glm::vec2(1.0f, 0.0f);
+  } else {
+    manifold.normal = from_1_to_2 / distance;
+  }
+  contacts.push_back(manifold);
+  return true;
+}
+
+} /* phys2d */
