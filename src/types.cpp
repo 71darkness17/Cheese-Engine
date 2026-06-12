@@ -2,7 +2,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
-
 namespace phys2d {
 
 AABB::AABB(
@@ -284,7 +283,7 @@ void PhysicsSystem::checkCollisions()
       // Narrowphase
       // check collision by shapes
       if (cc1.shapeType == BodyShape::Polygon && cc2.shapeType == BodyShape::Polygon) {
-        //collidePolygonVsPolygon(e1, tc1, *cc1.getPolygon(), e2, tc2, *cc2.getPolygon());
+        collidePolygonVsPolygon(e1, tc1, *cc1.getPolygon(), e2, tc2, *cc2.getPolygon());
       } else if (cc1.shapeType == BodyShape::Circle && cc2.shapeType == BodyShape::Circle) {
         collideCircleVsCircle(e1, tc1, *cc1.getCircle(), e2, tc2, *cc2.getCircle());
       } else if (cc1.shapeType == BodyShape::Circle && cc2.shapeType == BodyShape::Polygon) {
@@ -451,5 +450,99 @@ bool PhysicsSystem::collideCircleVsPolygon(
   
   return true;
 }
+
+bool PhysicsSystem::collidePolygonVsPolygon(
+  entt::entity              e1, 
+  const TransformComponent& tc1, 
+  const PolygonGeometry&    geometry1,
+  entt::entity              e2, 
+  const TransformComponent& tc2, 
+  const PolygonGeometry&    geometry2)
+{
+  tc1.updateMatrix();
+  tc2.updateMatrix();
+
+  size_t vertex_count1 = geometry1.vertices.size();
+  size_t vertex_count2 = geometry2.vertices.size();
+
+  std::vector<glm::vec2> world_vertices1(vertex_count1);
+  std::vector<glm::vec2> world_vertices2(vertex_count2);
+
+  for (size_t i = 0; i < vertex_count1; ++i) {
+    glm::vec3 extended = glm::vec3(geometry1.vertices[i].x, geometry1.vertices[i].y, 1.0f);
+    world_vertices1[i] = glm::vec2(tc1.modelMatrix * extended);
+  }
+
+  for (size_t i = 0; i < vertex_count2; ++i) {
+    glm::vec3 extended = glm::vec3(geometry2.vertices[i].x, geometry2.vertices[i].y, 1.0f);
+    world_vertices2[i] = glm::vec2(tc2.modelMatrix * extended);
+  }
+
+  float min_overlap = phys2d::inf;
+  glm::vec2 collision_normal = glm::vec2(0.0f);
+
+  // helper for checking overlap
+  auto checkPolygonOverlap = [&](
+    const std::vector<glm::vec2>& vertices1, 
+    const std::vector<glm::vec2> vertices2) -> bool 
+  {
+    size_t vertex_count = vertices1.size();
+    for (size_t i = 0; i < vertex_count; ++i) {
+      glm::vec2 edge = vertices1[(i+1) % vertex_count] - vertices1[i];
+      glm::vec2 axis = glm::normalize(glm::vec2(-edge.y, edge.x));
+
+      float min_poly1_coord = phys2d::inf;
+      float max_poly1_coord = -phys2d::inf;
+      for (const auto& vertex : vertices1) {
+        float projection = glm::dot(vertex, axis);
+        min_poly1_coord = glm::min(min_poly1_coord, projection);
+        max_poly1_coord = glm::max(max_poly1_coord, projection);
+      }
+
+      float min_poly2_coord = phys2d::inf;
+      float max_poly2_coord = -phys2d::inf;
+      for (const auto vertex: vertices2) {
+        float projection = glm::dot(vertex, axis);
+        min_poly2_coord = glm::min(min_poly2_coord, projection);
+        max_poly2_coord = glm::max(max_poly2_coord, projection);
+      }
+
+      if (min_poly1_coord >= max_poly2_coord || min_poly2_coord >= max_poly1_coord) {
+        return false;
+      }
+
+      float overlap = glm::min(max_poly1_coord, max_poly2_coord) - glm::max(min_poly1_coord, min_poly2_coord);
+      if (overlap < min_overlap) {
+        min_overlap = overlap;
+        collision_normal = axis;
+      }
+    }
+    return true;
+  };
+  
+  // check whether polygon1 overlaps polygon2
+  if (!checkPolygonOverlap(world_vertices1, world_vertices2)) return false;
+
+  // check whether polygon2 overlaps polygon1
+  if (!checkPolygonOverlap(world_vertices2, world_vertices1)) return false;
+
+  CollisionManifold manifold;
+  manifold.entityA = e1;
+  manifold.entityB = e2;
+  manifold.penetration = min_overlap;
+
+  glm::vec2 from_1_to_2 = tc2.position - tc1.position;
+  if (glm::dot(collision_normal, from_1_to_2) < 0.0f) {
+    collision_normal = -collision_normal;
+  }
+  manifold.normal = collision_normal;
+
+  glm::vec2 contact_point = tc1.position + from_1_to_2 * 0.5f;
+  manifold.contactPoints.push_back(contact_point);
+
+  contacts.push_back(manifold);
+  return true;
+}
+
 
 } /* phys2d */

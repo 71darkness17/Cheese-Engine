@@ -302,8 +302,8 @@ private:
                               entt::entity e2, const TransformComponent& tc2, const PolygonGeometry& geometry2, 
                               bool flipNormal);
                               
-  bool collidePolygonVsPolygon(entt::entity eA, const TransformComponent& tA, const PolygonGeometry& pA,
-                                entt::entity eB, const TransformComponent& tB, const PolygonGeometry& pB);
+  bool collidePolygonVsPolygon(entt::entity e1, const TransformComponent& tc1, const PolygonGeometry& geometry1,
+                                entt::entity e2, const TransformComponent& tc2, const PolygonGeometry& geometry2);
   
 private:
   glm::vec2 gravity{0.0f, 0.0f};
