@@ -178,7 +178,7 @@ AABB ColliderComponent::getAABB(const TransformComponent& tc) const
   tc.updateMatrix();
   if (shapeType == BodyShape::Circle) {
     float r = getCircle()->radius;
-    return AABB({tc.position.x - r, tc.position.y - r}, {tc.position.x + r, tc.position.y + r});
+    return AABB({tc.position.x - r * tc.scaling, tc.position.y - r * tc.scaling}, {tc.position.x + r * tc.scaling, tc.position.y + r * tc.scaling});
   } else if (shapeType == BodyShape::Polygon) {
     float x_min = inf, y_min = inf;
     float x_max = -inf, y_max = -inf;
@@ -288,9 +288,9 @@ void PhysicsSystem::checkCollisions()
       } else if (cc1.shapeType == BodyShape::Circle && cc2.shapeType == BodyShape::Circle) {
         collideCircleVsCircle(e1, tc1, *cc1.getCircle(), e2, tc2, *cc2.getCircle());
       } else if (cc1.shapeType == BodyShape::Circle && cc2.shapeType == BodyShape::Polygon) {
-        //collideCircleVsPolygon(e1, tc1, *cc1.getCircle(), e2, tc2, *cc2.getPolygon(), false);
+        collideCircleVsPolygon(e1, tc1, *cc1.getCircle(), e2, tc2, *cc2.getPolygon(), false);
       } else if (cc1.shapeType == BodyShape::Polygon && cc2.shapeType == BodyShape::Circle) {
-        //collideCircleVsPolygon(e2, tc2, *cc2.getCircle(), e1, tc1, *cc1.getPolygon(), true);
+        collideCircleVsPolygon(e2, tc2, *cc2.getCircle(), e1, tc1, *cc1.getPolygon(), true);
       }
     }
   }
@@ -324,6 +324,131 @@ bool PhysicsSystem::collideCircleVsCircle(
     manifold.normal = from_1_to_2 / distance;
   }
   contacts.push_back(manifold);
+  return true;
+}
+
+bool PhysicsSystem::collideCircleVsPolygon(
+  entt::entity              e1, 
+  const TransformComponent& tc1, 
+  const CircleGeometry&     geometry1,
+  entt::entity              e2, 
+  const TransformComponent& tc2, 
+  const PolygonGeometry&    geometry2,
+  bool flipNormal)
+{
+  tc1.updateMatrix();
+  tc2.updateMatrix();
+  
+  glm::vec2 circle_center = tc1.position;
+  float circle_radius = geometry1.radius * tc1.scaling;
+
+  size_t vertex_count = geometry2.vertices.size();
+  std::vector<glm::vec2> world_vertices(vertex_count);
+  for (size_t i = 0; i < vertex_count; ++i) {
+    glm::vec3 extended = {geometry2.vertices[i].x, geometry2.vertices[i].y, 1.0f};
+    world_vertices[i] = glm::vec2(tc2.modelMatrix * extended);
+  }
+
+  float min_overlap = phys2d::inf;
+  glm::vec2 collision_normal = glm::vec2(0.0f);
+
+  // 1. check collision(classic SAT)
+  for (size_t i = 0; i < vertex_count; ++i) {
+    glm::vec2 edge = world_vertices[(i+1) % vertex_count] - world_vertices[i];
+    glm::vec2 axis = glm::normalize(glm::vec2(-edge.y, edge.x));
+
+    float min_poly_coord = phys2d::inf;
+    float max_poly_coord = -phys2d::inf;
+
+    for (const auto& vertex : world_vertices) {
+      float projection = glm::dot(vertex, axis);
+      min_poly_coord = glm::min(min_poly_coord, projection);
+      max_poly_coord = glm::max(max_poly_coord, projection);
+    }
+
+    float circle_projection = glm::dot(circle_center, axis);
+    float min_circle_coord = circle_projection - circle_radius;
+    float max_circle_coord = circle_projection + circle_radius;
+
+    if (min_poly_coord >= max_circle_coord || min_circle_coord >= max_poly_coord) {
+      return false;
+    }
+
+    float overlap = glm::min(max_poly_coord, max_circle_coord) - glm::max(min_poly_coord, min_circle_coord);
+    if (overlap < min_overlap) {
+      min_overlap = overlap;
+      collision_normal = axis;
+    }
+  }
+
+  // 2. look the case where the only vertice is on the edge of the circle
+  size_t closest_vertex = 0;
+  float min_distance = phys2d::inf;
+
+  for (size_t i = 0; i < vertex_count; ++i) {
+    float distance = glm::distance(circle_center, world_vertices[i]);
+    if (distance < min_distance) {
+      min_distance = distance;
+      closest_vertex = i;
+    }
+  }
+
+  glm::vec2 axis = circle_center - world_vertices[closest_vertex];
+  float axis_length = glm::length(axis);
+
+  if (axis_length > phys2d::epsilon) {
+    axis = glm::normalize(axis);
+
+    float min_poly_coord = phys2d::inf;
+    float max_poly_coord = -phys2d::inf;
+
+    for (const auto& vertex : world_vertices) {
+      float projection = glm::dot(vertex, axis);
+      min_poly_coord = glm::min(min_poly_coord, projection);
+      max_poly_coord = glm::max(max_poly_coord, projection);
+    }
+
+    float circle_progjection = glm::dot(circle_center, axis);
+    float min_circle_coord = circle_progjection - circle_radius;
+    float max_circle_coord = circle_progjection + circle_radius;
+
+    if (min_poly_coord >= max_circle_coord || min_circle_coord >= max_poly_coord) {
+      return false;
+    }
+    float overlap = glm::min(max_circle_coord, max_poly_coord) - glm::max(min_circle_coord, min_poly_coord);
+    if (overlap < min_overlap) {
+      min_overlap = overlap;
+      collision_normal = axis;
+    }
+  }
+
+  // 3. forming CollisionManifold
+  CollisionManifold manifold;
+  manifold.entityA = flipNormal ? e2 : e1;
+  manifold.entityB = flipNormal ? e1 : e2;
+  manifold.penetration = min_overlap;
+
+  glm::vec2 poly_to_circle = circle_center - tc2.position; 
+  
+  if (flipNormal) {
+    if (glm::dot(collision_normal, poly_to_circle) < 0.0f) {
+      collision_normal = -collision_normal;
+    }
+    manifold.normal = collision_normal;
+  } else {
+    if (glm::dot(collision_normal, poly_to_circle) > 0.0f) {
+      collision_normal = -collision_normal;
+    }
+    manifold.normal = collision_normal;
+  }
+  // 4. evaluating exact contact_point
+  glm::vec2 circle_to_poly_dir = flipNormal ? -manifold.normal : manifold.normal;
+  glm::vec2 contact_point = circle_center + circle_to_poly_dir * circle_radius;
+  contact_point -= circle_to_poly_dir * (min_overlap * 0.5f); 
+  
+  manifold.contactPoints.push_back(contact_point);
+  contacts.push_back(manifold);
+  
   return true;
 }
 

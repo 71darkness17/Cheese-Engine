@@ -298,8 +298,8 @@ private:
   bool collideCircleVsCircle(entt::entity e1, const TransformComponent& tc1, const CircleGeometry& geometry1,
                               entt::entity e2, const TransformComponent& tc2, const CircleGeometry& geometry2);
                               
-  bool collideCircleVsPolygon(entt::entity eCircle, const TransformComponent& tCircle, const CircleGeometry& circle,
-                              entt::entity ePoly, const TransformComponent& tPoly, const PolygonGeometry& poly, 
+  bool collideCircleVsPolygon(entt::entity e1, const TransformComponent& tc1, const CircleGeometry& geometry1,
+                              entt::entity e2, const TransformComponent& tc2, const PolygonGeometry& geometry2, 
                               bool flipNormal);
                               
   bool collidePolygonVsPolygon(entt::entity eA, const TransformComponent& tA, const PolygonGeometry& pA,
