@@ -3,6 +3,8 @@
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
 
+#include "renderQueue.hpp"
+
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -20,12 +22,13 @@
 #include <array>
 #include <unordered_map>
 #include <mutex>
+#include <thread>
 
 const uint32_t HEIGHT = 600;
 const uint32_t WIDTH = 800;
 const int MAX_FRAMES_IN_FLIGHT = 2;
-
-bool isStopped = true;
+const size_t MAX_VERTICES = 1200;
+const size_t MAX_INDICES = 3600;
 
 const std::vector<char *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
@@ -49,11 +52,22 @@ enum KeyStatusEnum {
 
 class GraphicCore {
 public:
-    void run();
-    int addRectangle(glm::vec2 position,
-                     float width,
-                     float height,
-                     glm::vec3 color);
+
+    GraphicCore(GLFWwindow *window);
+
+
+
+    uint32_t addRectangle(glm::vec2 position,
+                          float width,
+                          float height,
+                          glm::vec3 color);
+    uint32_t addTriangle(std::array<glm::vec2, 3> positions,
+                         glm::vec3 color);
+
+    void removeFigure(uint32_t index);
+
+    void startGraphicThread();
+    void stopGraphicThread();
 
     struct Vertex {
         glm::vec2 pos;
@@ -62,6 +76,13 @@ public:
         static VkVertexInputBindingDescription getBindingDescription();
 
         static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
+    };
+
+    struct FigureDesc {
+        size_t vertexOffset;
+        size_t firstIndex;
+        uint32_t indexCount;
+        glm::mat4 model;
     };
 
 private:
@@ -85,6 +106,8 @@ private:
     };
 
     std::mutex verticesMutex;
+    std::mutex stopMutex;
+    std::thread graphicThread;
 
     GLFWwindow *window;
     VkInstance instance;
@@ -129,6 +152,12 @@ private:
     std::vector<VkDescriptorSet> descriptorSets;
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
+    std::unordered_map<int, FigureDesc> figures;
+    bool isStopped = false;
+    uint32_t indicesToDraw = 0;
+    uint32_t verticesCount = 0;
+    uint32_t nextFigureHex = 0x0;
+    RenderQueue renderQueue;
 
     static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
                                                  const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -141,7 +170,7 @@ private:
 
     static std::vector<char> readFile(const std::string &filename);
 
-    GraphicCore(GLFWwindow *window);
+    void run();
 
     void initWindow();
 
@@ -152,6 +181,20 @@ private:
     void mainLoop();
 
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+
+    void _addRectangle(glm::vec2 position,
+                       float width,
+                       float height,
+                       glm::vec3 color,
+                       uint32_t index);
+
+    void _addTriangle(std::array<glm::vec2, 3> positions,
+                      glm::vec3 color,
+                      uint32_t index);
+
+    void _removeFigure(uint32_t index);
+
+    void pollRenderQueue();
 
     void drawFrame();
 
@@ -248,11 +291,3 @@ private:
     void setupDebugMessenger();
     
 };
-
-/* Graphics Api start/stop declaration */
-
-GraphicCore * startGraphicsThread();
-
-void stopGraphicsThread(GraphicCore* tread);
-
-/* --- */

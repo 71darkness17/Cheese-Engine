@@ -1,24 +1,31 @@
-include(FetchContent)
+cmake_minimum_required(VERSION 3.16)
+project(DvizhEngine VERSION 1.0 LANGUAGES CXX)
 
-cmake_minimum_required(VERSION 3.28)
-project(PhysicsEngine)
+# Устанавливаем стандарт C++20
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(inc)
+# 1. Поиск зависимостей (Vulkan и GLFW)
+find_package(Vulkan REQUIRED)
+find_package(glfw3 3.3 REQUIRED) 
 
-FetchContent_Declare(
-  entt
-  GIT_REPOSITORY https://github.com/skypjack/entt.git
-  GIT_TAG        v3.16.0
+# 2. Явное перечисление файлов (лучшая практика для CMake)
+# Теперь CMake точно увидит изменения и пересоберет проект при создании новых файлов
+set(SOURCES
+    src/main.cc
+    src/graphicCore.cc
+    src/renderQueue.cc
 )
 
-FetchContent_Declare(
-  glm
-  GIT_REPOSITORY https://github.com/g-truc/glm.git
+# 3. Создаем исполняемый файл
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+# 4. Указываем путь к заголовочным файлам (папка inc)
+target_include_directories(${PROJECT_NAME} PUBLIC inc)
+
+# 5. Линкуем библиотеки
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE 
+        Vulkan::Vulkan
+        glfw
 )
-
-FetchContent_MakeAvailable(entt)
-FetchContent_MakeAvailable(glm)
-
-add_executable(App src/main.cpp src/types.cpp)
-
-target_link_libraries(App PRIVATE EnTT::EnTT glm::glm)

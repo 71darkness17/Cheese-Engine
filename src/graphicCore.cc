@@ -1,16 +1,8 @@
-#include <graphicCore.hpp>
+#include "graphicCore.hpp"
 
 /* Graphics Api start/stop definition */
 
-GraphicCore * startGraphicsThread() {
-    GraphicCore * core = new GraphicCore();
 
-    return core;
-}
-
-void stopGraphicsThread(GraphicCore* tread) {
-
-}
 
 /* --- */
 
@@ -30,7 +22,7 @@ void GraphicCore::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtil
     }
 }
 
-GraphicCore::GraphicCore(GLFWwindow *window): window(window) {}
+GraphicCore::GraphicCore(GLFWwindow *window): window(window), vertices(MAX_VERTICES), indices(MAX_INDICES) {}
 
 void GraphicCore::run() {
     initWindow();
@@ -39,25 +31,142 @@ void GraphicCore::run() {
     cleanup();
 }
 
-int GraphicCore::addRectangle(glm::vec2 position,
-                              float width,
-                              float height,
-                              glm::vec3 color) {
-    std::lock_guard<std::mutex> verticesLock(verticesMutex);
-    size_t startNum = vertices.size();
-    vertices.push_back({position, color});
-    vertices.push_back({position + glm::vec2(width, 0), color});
-    vertices.push_back({position + glm::vec2(0, height), color});
-    vertices.push_back({position + glm::vec2(width, height), color});
+uint32_t GraphicCore::addRectangle(glm::vec2 position,
+                                   float width,
+                                   float height,
+                                   glm::vec3 color) {
+    RenderCommand cmd;
+    cmd.type = AddRect;
+    cmd.addRect = {
+        .position = position,
+        .width = width,
+        .height = height,
+        .color = color,
+        .index = nextFigureHex
+    };
+    renderQueue.push(cmd);
+    return nextFigureHex++;
+}
 
-    indices.push_back(startNum);
-    indices.push_back(startNum + 1);
-    indices.push_back(startNum + 2);
-    indices.push_back(startNum + 2);
-    indices.push_back(startNum + 3);
-    indices.push_back(startNum);
-    verticesChanged = true;
+void GraphicCore::_addRectangle(glm::vec2 position,
+                                float width,
+                                float height,
+                                glm::vec3 color,
+                                uint32_t index) {
+    std::lock_guard<std::mutex> verticesLock(verticesMutex);
+    size_t startNum = verticesCount;
+    vertices[verticesCount++] = {position, color};
+    vertices[verticesCount++] = {position + glm::vec2(width, 0), color};
+    vertices[verticesCount++] = {position + glm::vec2(width, height), color};
+    vertices[verticesCount++] = {position + glm::vec2(0, height), color};
     
+    
+    size_t startIndex = indicesToDraw;
+    indices[indicesToDraw++] = startNum;
+    indices[indicesToDraw++] = startNum + 1;
+    indices[indicesToDraw++] = startNum + 2;
+    indices[indicesToDraw++] = startNum + 2;
+    indices[indicesToDraw++] = startNum + 3;
+    indices[indicesToDraw++] = startNum;
+
+    figures[index] = {.vertexOffset = startNum, .firstIndex = startIndex, .indexCount = 6};
+    
+    verticesChanged = true;
+}
+
+uint32_t GraphicCore::addTriangle(std::array<glm::vec2, 3> positions,
+                                  glm::vec3 color) {
+    RenderCommand cmd;
+    cmd.type = AddTriangle;
+    cmd.addTri = {
+        .positions = positions,
+        .color = color,
+        .index = nextFigureHex
+    };
+    renderQueue.push(cmd);
+
+    return nextFigureHex++;
+}
+
+void GraphicCore::_addTriangle(std::array<glm::vec2, 3> positions,
+                               glm::vec3 color,
+                               uint32_t index) {
+    std::lock_guard<std::mutex> verticesLock(verticesMutex);
+    size_t startNum = verticesCount;
+    vertices[verticesCount++] = {positions[0], color};
+    vertices[verticesCount++] = {positions[1], color};
+    vertices[verticesCount++] = {positions[2], color};
+
+    size_t startIndex = indicesToDraw;
+    indices[indicesToDraw++] = startNum;
+    indices[indicesToDraw++] = startNum + 1;
+    indices[indicesToDraw++] = startNum + 2;
+
+
+    figures[index] = {.vertexOffset = startNum, .firstIndex = startIndex, .indexCount = 3};
+
+    verticesChanged = true;
+
+}
+
+void GraphicCore::removeFigure(uint32_t index) {
+    RenderCommand cmd;
+    cmd.type = RemoveFig;
+    cmd.remove = {
+        .index = index
+    };
+    renderQueue.push(cmd);
+}
+
+void GraphicCore::_removeFigure(uint32_t index) {
+    std::lock_guard<std::mutex> verticesLock(verticesMutex);
+    if(figures.count(index) == 0)
+        return;
+    
+    FigureDesc fig = figures[index];
+    figures.erase(index);
+    size_t vertexCount = 3;
+    if (fig.indexCount == 6)
+        vertexCount = 4;
+    for(size_t i = 0; i < fig.indexCount; ++i) {
+        indices.erase(indices.begin() + fig.firstIndex);
+    }
+    for(size_t i = 0; i < vertexCount; ++i) {
+        vertices.erase(vertices.begin() + fig.vertexOffset);
+    }
+
+    for(auto &i : indices) {
+        if(i >= fig.vertexOffset + vertexCount) {
+            i -= vertexCount;
+        }
+    }
+
+    indicesToDraw -= fig.indexCount;
+    verticesCount -= vertexCount;
+    vertices.resize(MAX_VERTICES);
+    indices.resize(MAX_INDICES);
+
+    for(auto &[hex, desc] : figures) {
+        if(desc.firstIndex > fig.firstIndex)
+            desc.firstIndex -= fig.indexCount;
+        if(desc.vertexOffset > fig.vertexOffset)
+            desc.vertexOffset -= vertexCount;
+    }
+
+    verticesChanged = true;
+}
+
+void GraphicCore::startGraphicThread() {
+    graphicThread = std::thread(&GraphicCore::run, this);
+}
+
+void GraphicCore::stopGraphicThread() {
+    {
+        std::lock_guard<std::mutex> stopLock(stopMutex);
+        isStopped = true;
+    }
+    if (graphicThread.joinable())
+        graphicThread.join();
 }
 
 VkVertexInputBindingDescription GraphicCore::Vertex::getBindingDescription() {
@@ -146,9 +255,8 @@ void GraphicCore::createSurface() {
 }
 
 void GraphicCore::mainLoop() {
-    while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-
+    while(!glfwWindowShouldClose(window) && !isStopped) {
+        pollRenderQueue();
         drawFrame();
     }
 
@@ -222,6 +330,31 @@ void GraphicCore::drawFrame() {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+void GraphicCore::pollRenderQueue() {
+    RenderCommand cmd;
+    while(renderQueue.pop(cmd)) {
+        switch(cmd.type){
+            case AddRect:
+                _addRectangle(cmd.addRect.position,
+                              cmd.addRect.width,
+                              cmd.addRect.height,
+                              cmd.addRect.color,
+                              cmd.addRect.index);
+                break;
+            case AddTriangle:
+                _addTriangle(cmd.addTri.positions,
+                             cmd.addTri.color,
+                             cmd.addTri.index);
+                break;
+            case RemoveFig:
+                _removeFigure(cmd.remove.index);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 void GraphicCore::cleanup() {
     for(size_t i = 0; i != imageAvailableSemaphores.size(); i++) {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
@@ -260,8 +393,6 @@ void GraphicCore::cleanup() {
 
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
-    glfwDestroyWindow(window);
-    glfwTerminate();
 }
 
 bool GraphicCore::checkExtensionsSupport(const uint32_t extCount, const char ** extToCheck){
@@ -499,8 +630,8 @@ void GraphicCore::createDescriptorSetLayout() {
 }
 
 void GraphicCore::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("shaders/vert.spv");
-    auto fragShaderCode = readFile("shaders/frag.spv");
+    auto vertShaderCode = readFile("../shaders/vert.spv");
+    auto fragShaderCode = readFile("../shaders/frag.spv");
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
@@ -558,7 +689,7 @@ void GraphicCore::createGraphicsPipeline() {
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -693,15 +824,15 @@ void GraphicCore::createBuffer(VkDeviceSize size,
 void GraphicCore::createVertexBuffer() {
     std::lock_guard<std::mutex> verticesLock(verticesMutex);
 
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
     VkMemoryPropertyFlags propertyFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
     
     
     createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, propertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
 
     void * data;
-    vkMapMemory(device, stagingVertexBufferMemory, 0, sizeof(vertices[0]) * vertices.size(), 0, &data);
-    memcpy(data, vertices.data(), sizeof(vertices[0]) * vertices.size());
+    vkMapMemory(device, stagingVertexBufferMemory, 0, sizeof(Vertex) * vertices.size(), 0, &data);
+    memcpy(data, vertices.data(), sizeof(Vertex) * vertices.size());
     vkUnmapMemory(device, stagingVertexBufferMemory);
 
     createBuffer(bufferSize,
@@ -714,7 +845,7 @@ void GraphicCore::createVertexBuffer() {
 }
 
 void GraphicCore::createIndexBuffer() {
-    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    VkDeviceSize bufferSize = sizeof(uint16_t) * indices.size();
     VkMemoryPropertyFlags propertyFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, propertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
@@ -748,17 +879,11 @@ void GraphicCore::createUniformBuffers() {
 }
 
 void GraphicCore::updateUniformBuffer(uint32_t currentImage) {
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
     UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-
-    ubo.proj[1][1] *= -1;
+    ubo.model = glm::mat4(1.0f);
+    ubo.view = glm::mat4(1.0f);
+    ubo.proj = glm::mat4(1.0f);
 
     memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
 }
@@ -766,12 +891,19 @@ void GraphicCore::updateUniformBuffer(uint32_t currentImage) {
 void GraphicCore::updateVertexBuffer() {
     if(verticesChanged){
         std::lock_guard<std::mutex> verticesLock(verticesMutex);
-        void * data;
-        vkMapMemory(device, stagingVertexBufferMemory, 0, sizeof(vertices[0]) * vertices.size(), 0, &data);
-        memcpy(data, vertices.data(), sizeof(vertices[0]) * vertices.size());
+        void * vertexData;
+        vkMapMemory(device, stagingVertexBufferMemory, 0, sizeof(Vertex) * vertices.size(), 0, &vertexData);
+        memcpy(vertexData, vertices.data(), sizeof(Vertex) * vertices.size());
         vkUnmapMemory(device, stagingVertexBufferMemory);
         
-        copyBuffer(stagingVertexBuffer, vertexBuffer, sizeof(vertices[0]) * vertices.size());
+        copyBuffer(stagingVertexBuffer, vertexBuffer, sizeof(Vertex) * vertices.size());
+
+        void * indexData;
+        vkMapMemory(device, stagingIndexBufferMemory, 0, sizeof(uint16_t) * indices.size(), 0, &indexData);
+        memcpy(indexData, indices.data(), sizeof(uint16_t) * indices.size());
+        vkUnmapMemory(device, stagingIndexBufferMemory);
+        
+        copyBuffer(stagingIndexBuffer, indexBuffer, sizeof(uint16_t) * indices.size());
         verticesChanged = false;
     }
 }
@@ -901,7 +1033,10 @@ void GraphicCore::recordCommandBuffer(VkCommandBuffer commandBuffer,
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    for(const auto& [_, figure]: figures){
+        vkCmdDrawIndexed(commandBuffer, figure.indexCount, 1, figure.firstIndex, 0, 0);
+    }
+
     vkCmdEndRenderPass(commandBuffer);
 
     if(vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
