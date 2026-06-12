@@ -28,8 +28,11 @@ jobs:
           sudo apt update
           sudo apt install -y doxygen graphviz
 
+      - name: Configure CMake
+        run: cmake -B build
+
       - name: Create documentation
-        run: doxygen Doxyfile.in
+        run: doxygen build/Doxyfile
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
