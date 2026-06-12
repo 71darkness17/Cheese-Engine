@@ -66,6 +66,10 @@ public:
 
     void removeFigure(uint32_t index);
 
+    void setTransform(uint32_t index, const glm::mat4 &transform);
+
+    void setCamera(glm::vec2 position, float zoom); 
+
     void startGraphicThread();
     void stopGraphicThread();
 
@@ -76,13 +80,6 @@ public:
         static VkVertexInputBindingDescription getBindingDescription();
 
         static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
-    };
-
-    struct FigureDesc {
-        size_t vertexOffset;
-        size_t firstIndex;
-        uint32_t indexCount;
-        glm::mat4 model;
     };
 
 private:
@@ -100,9 +97,24 @@ private:
     };
 
     struct UniformBufferObject  {
-        alignas(16) glm::mat4 model;
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4 proj;
+    };
+
+    struct PushConstant {
+        alignas(16) glm::mat4 model;
+    };
+
+    struct FigureDesc {
+        size_t vertexOffset;
+        size_t firstIndex;
+        uint32_t indexCount;
+        glm::mat4 model;
+    };
+
+    struct Camera {
+        glm::vec2 position;
+        float zoom;
     };
 
     std::mutex verticesMutex;
@@ -158,6 +170,7 @@ private:
     uint32_t verticesCount = 0;
     uint32_t nextFigureHex = 0x0;
     RenderQueue renderQueue;
+    Camera camera;
 
     static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
                                                  const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -193,6 +206,10 @@ private:
                       uint32_t index);
 
     void _removeFigure(uint32_t index);
+
+    void _setTranform(uint32_t index, glm::mat4 transform);
+
+    void _setCamera(glm::vec2 position, float zoom);
 
     void pollRenderQueue();
 
