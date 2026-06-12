@@ -15,7 +15,8 @@ enum RenderCommandType {
     AddRect,
     AddTriangle,
     RemoveFig,
-    SetTransform
+    SetTransform,
+    SetCamera
 };
 
 struct RenderCommand {
@@ -44,6 +45,11 @@ struct RenderCommand {
             uint32_t index;
             glm::mat4 model;
         } transform;
+
+        struct {
+            glm::vec2 position;
+            float zoom;
+        } camera;
     };
 };
 

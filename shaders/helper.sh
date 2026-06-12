@@ -1,7 +1,7 @@
 
 compile() {
-    glslc /home/vladimir/Documents/VulkanTest/shaders/shader.vert -o /home/vladimir/Documents/VulkanTest/shaders/vert.spv
-    glslc /home/vladimir/Documents/VulkanTest/shaders/shader.frag -o /home/vladimir/Documents/VulkanTest/shaders/frag.spv
+    glslc shader.vert -o vert.spv
+    glslc shader.frag -o frag.spv
 }
 
 ${1}

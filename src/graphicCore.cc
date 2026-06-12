@@ -22,7 +22,10 @@ void GraphicCore::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtil
     }
 }
 
-GraphicCore::GraphicCore(GLFWwindow *window): window(window), vertices(MAX_VERTICES), indices(MAX_INDICES) {}
+GraphicCore::GraphicCore(GLFWwindow *window): window(window), vertices(MAX_VERTICES), indices(MAX_INDICES) {
+    camera.position = {WIDTH / 2.0f, HEIGHT / 2.0f};
+    camera.zoom = 1.0f;
+}
 
 void GraphicCore::run() {
     initWindow();
@@ -69,7 +72,7 @@ void GraphicCore::_addRectangle(glm::vec2 position,
     indices[indicesToDraw++] = startNum + 3;
     indices[indicesToDraw++] = startNum;
 
-    figures[index] = {.vertexOffset = startNum, .firstIndex = startIndex, .indexCount = 6};
+    figures[index] = {.vertexOffset = startNum, .firstIndex = startIndex, .indexCount = 6, .model = glm::mat4(1.0f)};
     
     verticesChanged = true;
 }
@@ -103,7 +106,7 @@ void GraphicCore::_addTriangle(std::array<glm::vec2, 3> positions,
     indices[indicesToDraw++] = startNum + 2;
 
 
-    figures[index] = {.vertexOffset = startNum, .firstIndex = startIndex, .indexCount = 3};
+    figures[index] = {.vertexOffset = startNum, .firstIndex = startIndex, .indexCount = 3, .model = glm::mat4(1.0f)};
 
     verticesChanged = true;
 
@@ -154,6 +157,37 @@ void GraphicCore::_removeFigure(uint32_t index) {
     }
 
     verticesChanged = true;
+}
+
+void GraphicCore::setTransform(uint32_t index, const glm::mat4 &transform) {
+    RenderCommand cmd;
+    cmd.type = SetTransform;
+    cmd.transform = {
+        .index = index,
+        .model = transform
+    };
+    renderQueue.push(cmd);
+}
+
+void GraphicCore::_setTranform(uint32_t index, glm::mat4 transform) {
+    if(figures.count(index) == 0)
+        return;
+    figures[index].model = transform;
+}
+
+void GraphicCore::setCamera(glm::vec2 position, float zoom) {
+    RenderCommand cmd;
+    cmd.type = SetCamera;
+    cmd.camera = {
+        .position = position,
+        .zoom = zoom
+    };
+    renderQueue.push(cmd);
+}
+
+void GraphicCore::_setCamera(glm::vec2 position, float zoom) {
+    camera.position = position;
+    camera.zoom = zoom;
 }
 
 void GraphicCore::startGraphicThread() {
@@ -348,6 +382,12 @@ void GraphicCore::pollRenderQueue() {
                 break;
             case RemoveFig:
                 _removeFigure(cmd.remove.index);
+                break;
+            case SetTransform:
+                _setTranform(cmd.transform.index, cmd.transform.model);
+                break;
+            case SetCamera:
+                _setCamera(cmd.camera.position, cmd.camera.zoom);
                 break;
             default:
                 break;
@@ -721,6 +761,15 @@ void GraphicCore::createGraphicsPipeline() {
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    
+    VkPushConstantRange pcRange{};
+    pcRange.offset = 0;
+    pcRange.size = sizeof(PushConstant);
+    pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pcRange;
+
 
     if(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS){
         throw std::runtime_error("failed to create pipeline layout!");
@@ -881,9 +930,10 @@ void GraphicCore::createUniformBuffers() {
 void GraphicCore::updateUniformBuffer(uint32_t currentImage) {
 
     UniformBufferObject ubo{};
-    ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::mat4(1.0f);
-    ubo.proj = glm::mat4(1.0f);
+    ubo.view = glm::translate(glm::mat4(1.0f), glm::vec3(-camera.position, 0)) * \
+               glm::scale(glm::mat4(1.0f), glm::vec3(camera.zoom, camera.zoom, 1));
+    ubo.proj = glm::ortho(-(float)swapChainExtent.width / 2.f, (float)swapChainExtent.width / 2.f,
+                          -(float)swapChainExtent.height / 2.f, (float)swapChainExtent.height / 2.f);
 
     memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
 }
@@ -1034,6 +1084,8 @@ void GraphicCore::recordCommandBuffer(VkCommandBuffer commandBuffer,
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     for(const auto& [_, figure]: figures){
+        PushConstant pc = {.model = figure.model};
+        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
         vkCmdDrawIndexed(commandBuffer, figure.indexCount, 1, figure.firstIndex, 0, 0);
     }
 
