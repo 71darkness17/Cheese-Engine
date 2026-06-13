@@ -1,47 +1,48 @@
 #pragma once
+#include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <variant>
-#include <entt/entt.hpp>
 namespace phys2d {
 
-  
 /* Maths */
-constexpr float pi = 3.14159265;
-constexpr float pi2 = pi*2;
+constexpr float pi  = 3.14159265;
+constexpr float pi2 = pi * 2;
 constexpr float inf = 2e5;
 
 /* Precision*/
 constexpr float epsilon = 1e-6;
 
 /* RigidBody*/
-constexpr float rb_defaultDamping = 0.01f;
-constexpr float rb_defaultRestitution = 0.5f;
-constexpr float rb_defaultFriction = 0.2f;
-constexpr float rb_defaultInvMass = 1.0f;
-constexpr float rb_defaultInvInertia = 1.0f;
+constexpr float rb_defaultDamping      = 0.01f;
+constexpr float rb_defaultRestitution  = 0.5f;
+constexpr float rb_defaultFriction     = 0.2f;
+constexpr float rb_defaultInvMass      = 1.0f;
+constexpr float rb_defaultInvInertia   = 1.0f;
 constexpr float rb_defaultGravityScale = 1.0f;
 
 /* Collider */
 constexpr glm::vec2 cd_defaultLocalOffset = {0.0f, 0.0f};
-constexpr bool cd_defaultTriggerStatus = false;
+constexpr bool cd_defaultTriggerStatus    = false;
 
 enum class BodyType {
-  Static,    ///< zero mass, zero velocity, can be manually moved
-  Kinematic, ///< zero mass, velocity is set by user, is moved by System
-  Dynamic    ///< non-negative mass, velocity is determined by outer forces, is moved by physics system
+  Static,     ///< zero mass, zero velocity, can be manually moved
+  Kinematic,  ///< zero mass, velocity is set by user, is moved by System
+  Dynamic     ///< non-negative mass, velocity is determined by outer forces, is moved by physics
+              ///< system
 };
 
 enum class BodyShape {
-  Polygon,     ///< convex polygon, has an array of points
-  Circle,      ///< perfect geometric circle, has radius
-  Capsule,     ///< capsule form, is constructed of two circles with same radius and connecting rectangle
-  Segment,     ///< simple segment, has length
-  SegmentChain ///< chain of segments, has array of points to connect sequently
+  Polygon,      ///< convex polygon, has an array of points
+  Circle,       ///< perfect geometric circle, has radius
+  Capsule,      ///< capsule form, is constructed of two circles with same radius and connecting
+                ///< rectangle
+  Segment,      ///< simple segment, has length
+  SegmentChain  ///< chain of segments, has array of points to connect sequently
 };
 
 struct AABB {
-  glm::vec2 lowerBound; ///< point with the smallest coords
-  glm::vec2 upperBound; ///< point with the biggest coords
+  glm::vec2 lowerBound;  ///< point with the smallest coords
+  glm::vec2 upperBound;  ///< point with the biggest coords
 
   AABB() = default;
   /**
@@ -69,12 +70,12 @@ struct AABB {
 bool checkCollision(const AABB& aabb1, const AABB& aabb2);
 
 struct TransformComponent {
-  glm::vec2 position{0.0f, 0.0f};       ///< global position of the object on the grid
-  float rotation{0.0f};                 ///< rotation angle of the object, clockwise
-  float scaling{1.0f};                  ///< scaling coefficient
-  
+  glm::vec2 position{0.0f, 0.0f};  ///< global position of the object on the grid
+  float rotation{0.0f};            ///< rotation angle of the object, clockwise
+  float scaling{1.0f};             ///< scaling coefficient
+
   mutable bool dirty{true};             ///< should we update model_matrix or not
-  mutable glm::mat3 modelMatrix{1.0f}; ///< model matrix for MVP-rendering
+  mutable glm::mat3 modelMatrix{1.0f};  ///< model matrix for MVP-rendering
 
   /**
    * @brief  recalculates the model matrix
@@ -150,23 +151,25 @@ struct TransformComponent {
 };
 
 struct RigidBodyComponent {
-  BodyType bodyType = BodyType::Dynamic;       ///< bodyType: Static, Kinematic or Dynamic
+  BodyType bodyType = BodyType::Dynamic;  ///< bodyType: Static, Kinematic or Dynamic
 
-  glm::vec2 linearVelocity{0.0f, 0.0f};        ///< velocity along some axis
-  glm::vec2 force{0.0f, 0.0f};                 ///< force: two-dimensional vector
-  float gravityScale = rb_defaultGravityScale; ///< gravity scale, 1 by default
+  glm::vec2 linearVelocity{0.0f, 0.0f};         ///< velocity along some axis
+  glm::vec2 force{0.0f, 0.0f};                  ///< force: two-dimensional vector
+  float gravityScale = rb_defaultGravityScale;  ///< gravity scale, 1 by default
 
-  float angularVelocity = 0.0f;                ///< angular velocity, in radians clockwise
-  float torque = 0.0f;                         ///< torque, in radians clockwise
+  float angularVelocity = 0.0f;  ///< angular velocity, in radians clockwise
+  float torque          = 0.0f;  ///< torque, in radians clockwise
 
-  float invMass = rb_defaultInvMass;           ///< inverted mass coefficient, used for calculating linear acceleration
-  float invInertia = rb_defaultInvInertia;     ///< inverted inertia, used for calculating angular acceleration, in radians clockwise
+  float invMass =
+    rb_defaultInvMass;  ///< inverted mass coefficient, used for calculating linear acceleration
+  float invInertia = rb_defaultInvInertia;  ///< inverted inertia, used for calculating angular
+                                            ///< acceleration, in radians clockwise
 
-  float linearDamping = rb_defaultDamping;     ///< linear damping of the object, from 0 to 1
-  float angularDamping = rb_defaultDamping;    ///< angular damping of the object, from 0 to 1
+  float linearDamping  = rb_defaultDamping;  ///< linear damping of the object, from 0 to 1
+  float angularDamping = rb_defaultDamping;  ///< angular damping of the object, from 0 to 1
 
-  float restitution = rb_defaultRestitution;   ///< restitution of the object, 0.5 by default
-  float friction = rb_defaultFriction;         ///< friction of the object, 0.2 by default
+  float restitution = rb_defaultRestitution;  ///< restitution of the object, 0.5 by default
+  float friction    = rb_defaultFriction;     ///< friction of the object, 0.2 by default
 
   /**
    * @brief default RigidBodyComponent constructor
@@ -174,7 +177,8 @@ struct RigidBodyComponent {
   RigidBodyComponent() = default;
 
   /**
-   * @brief RigidBodyComponent c-tor that uses only BodyType parameter, other fields are set by default
+   * @brief RigidBodyComponent c-tor that uses only BodyType parameter, other fields are set by
+   * default
    * @param bt: BodyType value, Static, Kinematic or Dynamic
    */
   RigidBodyComponent(phys2d::BodyType bt);
@@ -194,9 +198,10 @@ struct RigidBodyComponent {
    * @param restitiution: physical restitution, 0.5 by default
    * @param friction: physical friction, 0.2 by default
    */
-  RigidBodyComponent(BodyType bt, const glm::vec2& linearVelocity, const glm::vec2& force, 
-    float gravityScale, float angularVelocity, float torque, float mass, float inertia, 
-    float linearDamping, float angularDamping, float restitution, float friction);
+  RigidBodyComponent(BodyType bt, const glm::vec2& linearVelocity, const glm::vec2& force,
+                     float gravityScale, float angularVelocity, float torque, float mass,
+                     float inertia, float linearDamping, float angularDamping, float restitution,
+                     float friction);
 };
 
 struct PolygonGeometry {
@@ -214,48 +219,42 @@ struct CircleGeometry {
 using ShapeData = std::variant<PolygonGeometry, CircleGeometry>;
 
 namespace ColliderLayers {
-  constexpr uint32_t None             = 0x0000;
-  constexpr uint32_t Player           = 0x0001;
-  constexpr uint32_t PlayerProjectile = 0x0002;
-  constexpr uint32_t Enemy            = 0x0004;
-  constexpr uint32_t EnemyProjectile  = 0x0008;
-  constexpr uint32_t Environment      = 0x0010;
-  constexpr uint32_t All              = 0xFFFF;
-}
+constexpr uint32_t None             = 0x0000;
+constexpr uint32_t Player           = 0x0001;
+constexpr uint32_t PlayerProjectile = 0x0002;
+constexpr uint32_t Enemy            = 0x0004;
+constexpr uint32_t EnemyProjectile  = 0x0008;
+constexpr uint32_t Environment      = 0x0010;
+constexpr uint32_t All              = 0xFFFF;
+}  // namespace ColliderLayers
 
 struct ColliderComponent {
-  BodyShape shapeType; ///< shape of the object: polygon, circle, segment etc
-  ShapeData shapeData; ///< shape data: vertices, radius, borders etc
+  BodyShape shapeType;  ///< shape of the object: polygon, circle, segment etc
+  ShapeData shapeData;  ///< shape data: vertices, radius, borders etc
   glm::vec2 localOffset = cd_defaultLocalOffset;
-  bool isTrigger = cd_defaultTriggerStatus;
+  bool isTrigger        = cd_defaultTriggerStatus;
   uint32_t categoryBits = ColliderLayers::Player;
-  uint32_t maskBits = ColliderLayers::All & ~ColliderLayers::PlayerProjectile;
+  uint32_t maskBits     = ColliderLayers::All & ~ColliderLayers::PlayerProjectile;
 
   ColliderComponent();
   ColliderComponent(const BodyShape& st);
   template <typename Geometry>
-  ColliderComponent(
-    Geometry&& geom, 
-    const glm::vec2& offset = cd_defaultLocalOffset,
-    bool trigger = cd_defaultTriggerStatus, 
-    uint32_t categoryBits = ColliderLayers::Player, 
-    uint32_t maskBits = ColliderLayers::All & ~ColliderLayers::PlayerProjectile):
-      localOffset(offset),
-      isTrigger(trigger),
-      categoryBits(categoryBits),
-      maskBits(maskBits) 
-  {
+  ColliderComponent(Geometry&& geom, const glm::vec2& offset = cd_defaultLocalOffset,
+                    bool trigger          = cd_defaultTriggerStatus,
+                    uint32_t categoryBits = ColliderLayers::Player,
+                    uint32_t maskBits     = ColliderLayers::All & ~ColliderLayers::PlayerProjectile)
+    : localOffset(offset), isTrigger(trigger), categoryBits(categoryBits), maskBits(maskBits) {
     if constexpr (std::is_same_v<std::decay_t<Geometry>, phys2d::PolygonGeometry>) {
-      shapeData = PolygonGeometry();
-      shapeType = phys2d::BodyShape::Polygon;
+      shapeData     = PolygonGeometry();
+      shapeType     = phys2d::BodyShape::Polygon;
       *getPolygon() = std::forward<Geometry>(geom);
     } else if constexpr (std::is_same_v<std::decay_t<Geometry>, phys2d::CircleGeometry>) {
-      shapeData = CircleGeometry();
-      shapeType = phys2d::BodyShape::Circle;
+      shapeData    = CircleGeometry();
+      shapeType    = phys2d::BodyShape::Circle;
       *getCircle() = std::forward<Geometry>(geom);
     }
   }
-  
+
   CircleGeometry* getCircle();
   const CircleGeometry* getCircle() const;
 
@@ -265,46 +264,53 @@ struct ColliderComponent {
 };
 
 struct CollisionManifold {
-    entt::entity entityA;
-    entt::entity entityB;
-    
-    glm::vec2 normal;
-    float penetration;
-    
-    std::vector<glm::vec2> contactPoints; 
+  entt::entity entityA;
+  entt::entity entityB;
+
+  glm::vec2 normal;
+  float penetration;
+
+  std::vector<glm::vec2> contactPoints;
 };
 
 class PhysicsSystem {
 public:
   PhysicsSystem(entt::registry& registry);
- 
+
   void update(float dt);
 
   void setGravity(const glm::vec2& g);
   glm::vec2 getGravity() const;
   void setRegistry(entt::registry& resistry);
-  
+
   // not permanent
-  const std::vector<CollisionManifold>& getContacts() const { return contacts; }
-  void clearContacts() { contacts.clear(); }
+  const std::vector<CollisionManifold>& getContacts() const {
+    return contacts;
+  }
+  void clearContacts() {
+    contacts.clear();
+  }
+
 private:
-  
   void integrateForcesAndVelocities(float dt);
 
   void checkCollisions();
 
   void resolveCollisions(float dt);
 
-  bool collideCircleVsCircle(entt::entity e1, const TransformComponent& tc1, const CircleGeometry& geometry1,
-                              entt::entity e2, const TransformComponent& tc2, const CircleGeometry& geometry2);
-                              
-  bool collideCircleVsPolygon(entt::entity e1, const TransformComponent& tc1, const CircleGeometry& geometry1,
-                              entt::entity e2, const TransformComponent& tc2, const PolygonGeometry& geometry2, 
+  bool collideCircleVsCircle(entt::entity e1, const TransformComponent& tc1,
+                             const CircleGeometry& geometry1, entt::entity e2,
+                             const TransformComponent& tc2, const CircleGeometry& geometry2);
+
+  bool collideCircleVsPolygon(entt::entity e1, const TransformComponent& tc1,
+                              const CircleGeometry& geometry1, entt::entity e2,
+                              const TransformComponent& tc2, const PolygonGeometry& geometry2,
                               bool flipNormal);
-                              
-  bool collidePolygonVsPolygon(entt::entity e1, const TransformComponent& tc1, const PolygonGeometry& geometry1,
-                                entt::entity e2, const TransformComponent& tc2, const PolygonGeometry& geometry2);
-  
+
+  bool collidePolygonVsPolygon(entt::entity e1, const TransformComponent& tc1,
+                               const PolygonGeometry& geometry1, entt::entity e2,
+                               const TransformComponent& tc2, const PolygonGeometry& geometry2);
+
 private:
   glm::vec2 gravity{0.0f, 0.0f};
   std::vector<CollisionManifold> contacts;
@@ -313,4 +319,4 @@ private:
   const int positionIterations = 2;
 };
 
-} /* PhysicsEngine */
+}  // namespace phys2d
