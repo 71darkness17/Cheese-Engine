@@ -1,7 +1,9 @@
 #pragma once
+#include <EventBus.hpp>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <variant>
+
 namespace phys2d {
 
 /* Maths */
@@ -34,8 +36,7 @@ enum class BodyType {
 enum class BodyShape {
   Polygon,      ///< convex polygon, has an array of points
   Circle,       ///< perfect geometric circle, has radius
-  Capsule,      ///< capsule form, is constructed of two circles with same radius and connecting
-                ///< rectangle
+  Capsule,      ///< capsule form, is constructed of two circles with same radius and rectangle
   Segment,      ///< simple segment, has length
   SegmentChain  ///< chain of segments, has array of points to connect sequently
 };
@@ -281,22 +282,16 @@ public:
 
   void setGravity(const glm::vec2& g);
   glm::vec2 getGravity() const;
-  void setRegistry(entt::registry& resistry);
-
-  // not permanent
-  const std::vector<CollisionManifold>& getContacts() const {
-    return contacts;
-  }
-  void clearContacts() {
-    contacts.clear();
-  }
+  void setRegistry(entt::registry* registry);
+  void setEventBus(EventBus* eventBus);
 
 private:
   void integrateForcesAndVelocities(float dt);
 
   void checkCollisions();
 
-  void resolveCollisions(float dt);
+  void processImpulseAndPushback(entt::entity eA, entt::entity eB, const glm::vec2& normal,
+                                 float penetration, bool isTriggerA, bool isTriggerB);
 
   bool collideCircleVsCircle(entt::entity e1, const TransformComponent& tc1,
                              const CircleGeometry& geometry1, entt::entity e2,
@@ -315,6 +310,7 @@ private:
   glm::vec2 gravity{0.0f, 0.0f};
   std::vector<CollisionManifold> contacts;
   entt::registry* registry;
+  EventBus* eventBus;
   const int velocityIterations = 6;
   const int positionIterations = 2;
 };
