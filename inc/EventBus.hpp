@@ -1,13 +1,13 @@
 #pragma once
 
-#include <unordered_map>
-#include <vector>
-#include <memory>
-#include <typeindex>
-#include <functional>
-#include <type_traits>
 #include <algorithm>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <type_traits>
+#include <typeindex>
+#include <unordered_map>
+#include <vector>
 
 /**
  * @brief A unique identifier for a registered callback
@@ -43,19 +43,22 @@ public:
 template <typename T>
 class EventQueue : public IEventQueue {
 public:
-  std::vector<T> queue;     ///< Accumulated events for the current frame
-  std::vector<std::pair<HandlerId, std::function<void(const T&)>>> handlers; ///< Registered callbacks paired with their IDs
+  std::vector<T> queue;  ///< Accumulated events for the current frame
+  std::vector<std::pair<HandlerId, std::function<void(const T&)>>>
+    handlers;  ///< Registered callbacks paired with their IDs
 
   /**
    * @brief Moves events to a local buffer, clears the original queue, and notifies subscribers
-   * @note Moving the queue prevents iterator invalidation if Publish is called recursively inside a handler
+   * @note Moving the queue prevents iterator invalidation if Publish is called recursively inside a
+   * handler
    * @param None
    * @retval None
    */
   void Dispatch() override {
-    if (queue.empty()) return;
+    if (queue.empty())
+      return;
 
-    auto currentEvents = std::move(queue); 
+    auto currentEvents = std::move(queue);
     queue.clear();
 
     for (const auto& event : currentEvents) {
@@ -86,8 +89,9 @@ public:
  */
 class EventBus {
 private:
-  std::unordered_map<std::type_index, std::unique_ptr<IEventQueue>> queues; ///< Map of event types to their queues
-  HandlerId nextId; ///< Counter for generating unique handler IDs
+  std::unordered_map<std::type_index, std::unique_ptr<IEventQueue>>
+    queues;          ///< Map of event types to their queues
+  HandlerId nextId;  ///< Counter for generating unique handler IDs
 
 public:
   /**
@@ -95,7 +99,8 @@ public:
    * @param None
    * @retval None
    */
-  EventBus() : nextId(0) {}
+  EventBus() : nextId(0) {
+  }
 
   /**
    * @brief Adds an event to the corresponding type queue for future dispatch
@@ -105,12 +110,12 @@ public:
   template <typename T>
   void Publish(T&& event) {
     using CleanType = std::decay_t<T>;
-    auto typeIdx = std::type_index(typeid(CleanType));
-    
+    auto typeIdx    = std::type_index(typeid(CleanType));
+
     if (queues.find(typeIdx) == queues.end()) {
       queues[typeIdx] = std::make_unique<EventQueue<CleanType>>();
     }
-    
+
     auto* q = static_cast<EventQueue<CleanType>*>(queues[typeIdx].get());
     q->queue.push_back(std::forward<T>(event));
   }
@@ -123,23 +128,24 @@ public:
   template <typename T>
   HandlerId Subscribe(std::function<void(const T&)> callback) {
     using CleanType = std::decay_t<T>;
-    auto typeIdx = std::type_index(typeid(CleanType));
-    
+    auto typeIdx    = std::type_index(typeid(CleanType));
+
     if (queues.find(typeIdx) == queues.end()) {
       queues[typeIdx] = std::make_unique<EventQueue<CleanType>>();
     }
-    
+
     auto* q = static_cast<EventQueue<CleanType>*>(queues[typeIdx].get());
-    
+
     HandlerId id = ++nextId;
     q->handlers.push_back({id, callback});
-    
+
     return id;
   }
 
   /**
    * @brief Removes a handler from the event bus across all queues
-   * @note Iterates through all abstract queues. Safe and efficient enough since unsubscriptions are rare
+   * @note Iterates through all abstract queues. Safe and efficient enough since unsubscriptions are
+   * rare
    * @param id : The unique identifier of the handler returned by Subscribe
    * @retval None
    */
