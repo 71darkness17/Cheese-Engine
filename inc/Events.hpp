@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <entt/entt.hpp>
+#include <glm/glm.hpp>
 
 /**
  * @brief Base marker class for all engine events
@@ -18,9 +20,9 @@ struct Event {
  * @brief Fired when two solid physical bodies collide
  */
 struct CollideEvent : public Event {
-  uint32_t entityA;  ///< ID of the entity that initiated the contact
-  uint32_t entityB;  ///< ID of the entity that was hit
-  float normal[2];   ///< Collision normal vector (direction of the impact)
+  entt::entity entityA;  ///< ID of the entity that initiated the contact
+  entt::entity entityB;  ///< ID of the entity that was hit
+  glm::vec2 normal;   ///< Collision normal vector (direction of the impact)
   float force;       ///< Magnitude of the collision impulse
 
   /**
@@ -39,10 +41,9 @@ struct CollideEvent : public Event {
    * @param f  : Force of the impact
    * @retval None
    */
-  CollideEvent(uint32_t a, uint32_t b, float nx, float ny, float f)
-    : entityA(a), entityB(b), force(f) {
-    normal[0] = nx;
-    normal[1] = ny;
+  CollideEvent(entt::entity a, entt::entity b, glm::vec2 normal, float f)
+    : entityA(a), entityB(b), normal(normal), force(f) {
+
   }
 };
 
@@ -59,8 +60,8 @@ enum class TriggerAction {
  * @brief Fired when an entity overlaps with a non-solid trigger zone
  */
 struct InterceptionEvent : public Event {
-  uint32_t entityA;      ///< ID of the physical entity (e.g., Player)
-  uint32_t entityB;      ///< ID of the non-solid trigger zone
+  entt::entity entityA;      ///< ID of the physical entity (e.g., Player)
+  entt::entity entityB;      ///< ID of the non-solid trigger zone
   TriggerAction action;  ///< State of the intersection
 
   /**
@@ -77,7 +78,7 @@ struct InterceptionEvent : public Event {
    * @param act : Current state of the intersection
    * @retval None
    */
-  InterceptionEvent(uint32_t a, uint32_t b, TriggerAction act)
+  InterceptionEvent(entt::entity a, entt::entity b, TriggerAction act)
     : entityA(a), entityB(b), action(act) {
   }
 };
@@ -116,7 +117,7 @@ struct InputEvent : public Event {
  */
 struct QuestStartEvent : public Event {
   uint32_t questID;   ///< ID of the quest to be executed
-  uint32_t entityID;  ///< ID of the entity that initiated the quest
+  entt::entity entityID;  ///< ID of the entity that initiated the quest
 
   /**
    * @brief Default constructor
@@ -131,6 +132,6 @@ struct QuestStartEvent : public Event {
    * @param e : ID of the initiating entity
    * @retval None
    */
-  QuestStartEvent(uint32_t q, uint32_t e) : questID(q), entityID(e) {
+  QuestStartEvent(uint32_t q, entt::entity e) : questID(q), entityID(e) {
   }
 };
