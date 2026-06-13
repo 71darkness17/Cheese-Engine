@@ -1,0 +1,16 @@
+name: Cheese Engine Mistral Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: "Devstral"
+    provider: mistral
+    model: devstral-2512
+    apiKey: "YOUR_API_KEY_HERE" # Replace with your actual Mistral API key
+    roles: [chat, edit, apply, summarize]
+
+  - name: "Codestral"
+    provider: mistral
+    model: codestral-latest
+    apiKey: "YOUR_API_KEY_HERE" # Replace with your actual Mistral API key
+    roles: [autocomplete]
