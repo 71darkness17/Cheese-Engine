@@ -1,3 +1,4 @@
+#include <Events.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
@@ -275,20 +276,14 @@ bool PhysicsSystem::collideCircleVsCircle(entt::entity e1, const TransformCompon
   if (distance >= radius_sum) {
     return false;
   }
+  bool isTrigger1 = registry->get<ColliderComponent>(e1).isTrigger;
+  bool isTrigger2 = registry->get<ColliderComponent>(e2).isTrigger;
 
-  CollisionManifold manifold;
-  manifold.entityA     = e1;
-  manifold.entityB     = e2;
-  manifold.penetration = radius_sum - distance;
+  float penetration = radius_sum - distance;
+  glm::vec2 collision_normal =
+    (distance < phys2d::epsilon) ? glm::vec2(1.0f, 0.0f) : from_1_to_2 / distance;
 
-  if (distance < phys2d::epsilon) {
-    // circles have centers in the same point
-    // make syntetic normal
-    manifold.normal = glm::vec2(1.0f, 0.0f);
-  } else {
-    manifold.normal = from_1_to_2 / distance;
-  }
-  contacts.push_back(manifold);
+  processImpulseAndPushback(e1, e2, collision_normal, penetration, isTrigger1, isTrigger2);
   return true;
 }
 
@@ -384,33 +379,21 @@ bool PhysicsSystem::collideCircleVsPolygon(entt::entity e1, const TransformCompo
     }
   }
 
-  // 3. forming CollisionManifold
-  CollisionManifold manifold;
-  manifold.entityA     = flipNormal ? e2 : e1;
-  manifold.entityB     = flipNormal ? e1 : e2;
-  manifold.penetration = min_overlap;
+  float penetration = min_overlap;
 
   glm::vec2 poly_to_circle = circle_center - tc2.position;
-
   if (flipNormal) {
     if (glm::dot(collision_normal, poly_to_circle) < 0.0f) {
       collision_normal = -collision_normal;
     }
-    manifold.normal = collision_normal;
   } else {
     if (glm::dot(collision_normal, poly_to_circle) > 0.0f) {
       collision_normal = -collision_normal;
     }
-    manifold.normal = collision_normal;
   }
-  // 4. evaluating exact contact_point
-  glm::vec2 circle_to_poly_dir = flipNormal ? -manifold.normal : manifold.normal;
-  glm::vec2 contact_point      = circle_center + circle_to_poly_dir * circle_radius;
-  contact_point -= circle_to_poly_dir * (min_overlap * 0.5f);
-
-  manifold.contactPoints.push_back(contact_point);
-  contacts.push_back(manifold);
-
+  bool isTrigger1 = registry->get<ColliderComponent>(e1).isTrigger;
+  bool isTrigger2 = registry->get<ColliderComponent>(e2).isTrigger;
+  processImpulseAndPushback(e1, e2, collision_normal, penetration, isTrigger1, isTrigger2);
   return true;
 }
 
@@ -486,22 +469,82 @@ bool PhysicsSystem::collidePolygonVsPolygon(entt::entity e1, const TransformComp
   if (!checkPolygonOverlap(world_vertices2, world_vertices1))
     return false;
 
-  CollisionManifold manifold;
-  manifold.entityA     = e1;
-  manifold.entityB     = e2;
-  manifold.penetration = min_overlap;
+  float penetration = min_overlap;
 
   glm::vec2 from_1_to_2 = tc2.position - tc1.position;
   if (glm::dot(collision_normal, from_1_to_2) < 0.0f) {
     collision_normal = -collision_normal;
   }
-  manifold.normal = collision_normal;
 
-  glm::vec2 contact_point = tc1.position + from_1_to_2 * 0.5f;
-  manifold.contactPoints.push_back(contact_point);
+  bool isTrigger1 = registry->get<ColliderComponent>(e1).isTrigger;
+  bool isTrigger2 = registry->get<ColliderComponent>(e2).isTrigger;
 
-  contacts.push_back(manifold);
+  processImpulseAndPushback(e1, e2, collision_normal, penetration, isTrigger1, isTrigger2);
   return true;
+}
+
+void PhysicsSystem::setRegistry(entt::registry* registry) {
+  this->registry = registry;
+}
+
+void PhysicsSystem::setEventBus(EventBus* eventBus) {
+  this->eventBus = eventBus;
+}
+
+void PhysicsSystem::processImpulseAndPushback(entt::entity e1, entt::entity e2,
+                                              const glm::vec2& normal, float penetration,
+                                              bool isTrigger1, bool isTrigger2) {
+  if (isTrigger1 || isTrigger2) {
+    if (eventBus) {
+      eventBus->Publish(InterceptionEvent(e1, e2, TriggerAction::ENTER));
+    }
+    return;
+  }
+
+  float impulse_magnitude = 0.0f;
+
+  RigidBodyComponent* rb1 = registry->try_get<RigidBodyComponent>(e1);
+  RigidBodyComponent* rb2 = registry->try_get<RigidBodyComponent>(e2);
+
+  if (rb1 || rb2) {
+    glm::vec2 v1                = rb1 ? rb1->linearVelocity : glm::vec2(0.0f);
+    glm::vec2 v2                = rb2 ? rb2->linearVelocity : glm::vec2(0.0f);
+    glm::vec2 relative_velocity = v2 - v1;
+
+    float velocity_along_normal = glm::dot(relative_velocity, normal);
+
+    if (velocity_along_normal < 0.0f) {
+      float e            = glm::min(rb1 ? rb1->restitution : 1.0f, rb2 ? rb2->restitution : 1.0f);
+      float inv_mass_sum = (rb1 ? rb1->invMass : 0.0f) + (rb2 ? rb2->invMass : 0.0f);
+
+      if (inv_mass_sum > phys2d::epsilon) {
+        float j = -(1.0f + e) * velocity_along_normal;
+        j /= inv_mass_sum;
+        impulse_magnitude = j;
+
+        if (rb1 && rb1->bodyType == BodyType::Dynamic)
+          rb1->linearVelocity -= normal * (j * rb1->invMass);
+        if (rb2 && rb2->bodyType == BodyType::Dynamic)
+          rb2->linearVelocity += normal * (j * rb2->invMass);
+      }
+    }
+  }
+
+  float total_inv_mass = (rb1 ? rb1->invMass : 0.0f) + (rb2 ? rb2->invMass : 0.0f);
+  if (total_inv_mass > phys2d::epsilon) {
+    constexpr float slop    = 0.01f;
+    constexpr float percent = 0.4f;
+    glm::vec2 correction = normal * (glm::max(penetration - slop, 0.0f) / total_inv_mass * percent);
+
+    if (rb1 && rb1->bodyType == BodyType::Dynamic)
+      registry->get<TransformComponent>(e1).move(-correction * rb1->invMass);
+    if (rb2 && rb2->bodyType == BodyType::Dynamic)
+      registry->get<TransformComponent>(e2).move(correction * rb2->invMass);
+  }
+
+  if (eventBus) {
+    eventBus->Publish(CollideEvent(e1, e2, normal, impulse_magnitude));
+  }
 }
 
 }  // namespace phys2d
