@@ -2,7 +2,6 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <variant>
-#include <entt/entt.hpp>
 namespace phys2d {
 
 /* Maths */
@@ -44,15 +43,6 @@ enum class BodyShape {
 struct AABB {
   glm::vec2 lowerBound;  ///< point with the smallest coords
   glm::vec2 upperBound;  ///< point with the biggest coords
-
-  AABB() = default;
-  /**
-   * @brief constructor for AABB-object
-   * @param lb: lower bound, point with the smallest coords
-   * @param ub: upper bound, point with the biggest coords
-   * @retval None
-   */
-  AABB(const glm::vec2& lb, const glm::vec2& ub);
 
   AABB() = default;
   /**
