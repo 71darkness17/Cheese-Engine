@@ -22,8 +22,8 @@ struct Event {
 struct CollideEvent : public Event {
   entt::entity entityA;  ///< ID of the entity that initiated the contact
   entt::entity entityB;  ///< ID of the entity that was hit
-  glm::vec2 normal;   ///< Collision normal vector (direction of the impact)
-  float force;       ///< Magnitude of the collision impulse
+  glm::vec2 normal;      ///< Collision normal vector (direction of the impact)
+  float force;           ///< Magnitude of the collision impulse
 
   /**
    * @brief Default constructor for line-by-line initialization
@@ -43,7 +43,6 @@ struct CollideEvent : public Event {
    */
   CollideEvent(entt::entity a, entt::entity b, glm::vec2 normal, float f)
     : entityA(a), entityB(b), normal(normal), force(f) {
-
   }
 };
 
@@ -60,8 +59,8 @@ enum class TriggerAction {
  * @brief Fired when an entity overlaps with a non-solid trigger zone
  */
 struct InterceptionEvent : public Event {
-  entt::entity entityA;      ///< ID of the physical entity (e.g., Player)
-  entt::entity entityB;      ///< ID of the non-solid trigger zone
+  entt::entity entityA;  ///< ID of the physical entity (e.g., Player)
+  entt::entity entityB;  ///< ID of the non-solid trigger zone
   TriggerAction action;  ///< State of the intersection
 
   /**
@@ -116,7 +115,7 @@ struct InputEvent : public Event {
  * @brief Fired when a built-in quest or script is triggered
  */
 struct QuestStartEvent : public Event {
-  uint32_t questID;   ///< ID of the quest to be executed
+  uint32_t questID;       ///< ID of the quest to be executed
   entt::entity entityID;  ///< ID of the entity that initiated the quest
 
   /**

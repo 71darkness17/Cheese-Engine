@@ -1,7 +1,7 @@
 PROJECT_NAME           = "PhysicsEngine"
 PROJECT_BRIEF          = "A 2D Physics Engine"
-OUTPUT_DIRECTORY       = @CMAKE_CURRENT_SOURCE_DIR@/docs
-INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/inc
+OUTPUT_DIRECTORY       = docs
+INPUT                  = inc
 RECURSIVE              = YES
 GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
