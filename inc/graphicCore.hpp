@@ -4,6 +4,8 @@
 #define GLM_FORCE_RADIANS
 
 #include <GLFW/glfw3.h>
+#include <external/stb_image.h>
+
 
 #include <algorithm>
 #include <array>
@@ -21,6 +23,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <string>
 
 #include "renderQueue.hpp"
 
@@ -29,10 +32,12 @@ const uint32_t WIDTH           = 800;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const size_t MAX_VERTICES      = 1200;
 const size_t MAX_INDICES       = 3600;
+const uint32_t MAX_IMAGE_LAYERS = 100;
 
 const std::vector<char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
 
 enum KeyStatusEnum { KEY_PRESSED, KEY_RELEASED };
 
@@ -44,6 +49,12 @@ const bool enableValidationLayers = true;
 
 class GraphicCore {
 public:
+
+  struct TextureDescriptor {
+    uint32_t arrayId;
+    uint32_t layerId;
+  };
+
   GraphicCore(GLFWwindow* window);
 
   uint32_t addRectangle(glm::vec2 position, float width, float height, glm::vec3 color);
@@ -55,17 +66,12 @@ public:
 
   void setCamera(glm::vec2 position, float zoom);
 
+  TextureDescriptor addTexture(const std::string &path);
+
+  void setTexture(uint32_t figureIndex, TextureDescriptor textureDescriptor);
+
   void startGraphicThread();
   void stopGraphicThread();
-
-  struct Vertex {
-    glm::vec2 pos;
-    glm::vec3 color;
-
-    static VkVertexInputBindingDescription getBindingDescription();
-
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
-  };
 
 private:
   struct QueueFamilyIndicies {
@@ -88,6 +94,7 @@ private:
 
   struct PushConstant {
     alignas(16) glm::mat4 model;
+    uint32_t textureHandler;
   };
 
   struct FigureDesc {
@@ -95,11 +102,32 @@ private:
     size_t firstIndex;
     uint32_t indexCount;
     glm::mat4 model;
+    uint32_t textureHandler = 0;
   };
 
   struct Camera {
     glm::vec2 position;
     float zoom;
+  };
+
+  struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+    glm::vec2 texCoord;
+
+    static VkVertexInputBindingDescription getBindingDescription();
+
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();
+  };
+
+  struct TextureArray {
+    VkImage image;
+    VkDeviceMemory imageMemory;
+    VkImageView imageView;
+    VkSampler sampler;
+    uint32_t layersCount;
+    VkExtent2D extent;
+    std::vector<stbi_uc*> pixels;
   };
 
   std::mutex verticesMutex;
@@ -156,6 +184,8 @@ private:
   uint32_t nextFigureHex = 0x0;
   RenderQueue renderQueue;
   Camera camera;
+  std::vector<std::string> texturePaths;
+  std::vector<TextureArray> textureArrays;
 
   static VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -217,6 +247,25 @@ private:
   void createFrameBuffers();
 
   void createCommandPool();
+
+  void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+    VkImage &image, VkDeviceMemory& imageMemory, uint32_t arrayLayers);
+
+  VkCommandBuffer beginSingleTimeCommands();
+
+  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
+  void createTextureImage();
+
+  void createTextureImageView();
+
+  VkImageView createImageView(VkImage image, VkFormat format, uint32_t layerCount);
+
+  void createTextureSampler();
+
+  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount);
+
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount);
 
   void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
                     VkBuffer& buffer, VkDeviceMemory& bufferMemory);
