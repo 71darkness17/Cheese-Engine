@@ -8,42 +8,56 @@
 #include <glm/glm.hpp>
 #include <mutex>
 #include <queue>
+#include <variant>
 #include <vector>
 
-enum RenderCommandType { AddRect, AddTriangle, RemoveFig, SetTransform, SetCamera };
+enum RenderCommandType { AddRect, AddTriangle, RemoveFig, SetTransform, SetCamera, SetTexture };
+
+struct TextureDescriptor {
+  uint32_t arrayId;
+  uint32_t layerId;
+};
 
 struct RenderCommand {
   RenderCommandType type;
 
-  union {
-    struct {
-      glm::vec2 position;
-      float width;
-      float height;
-      glm::vec3 color;
-      uint32_t index;
-    } addRect;
-
-    struct {
-      std::array<glm::vec2, 3> positions;
-      glm::vec3 color;
-      uint32_t index;
-    } addTri;
-
-    struct {
-      uint32_t index;
-    } remove;
-
-    struct {
-      uint32_t index;
-      glm::mat4 model;
-    } transform;
-
-    struct {
-      glm::vec2 position;
-      float zoom;
-    } camera;
+  struct AddRect {
+    glm::vec2 position;
+    float width;
+    float height;
+    glm::vec3 color;
+    uint32_t index;
   };
+
+  struct AddTri {
+    std::array<glm::vec2, 3> positions;
+    glm::vec3 color;
+    uint32_t index;
+  };
+
+  struct Remove {
+    uint32_t index;
+  };
+
+  struct Transform {
+    uint32_t index;
+    glm::mat4 model;
+  };
+
+  struct Camera {
+    glm::vec2 position;
+    float zoom;
+  };
+
+  struct SetTexture {
+    uint32_t index;
+    TextureDescriptor textureDesc;
+    std::vector<glm::vec2> texCoords;
+  };
+
+  using Data = std::variant<AddRect, AddTri, Remove, Transform, Camera, SetTexture>;
+
+  Data data;
 };
 
 class RenderQueue {
