@@ -3,4 +3,4 @@
 # Authors
 - [Vladimir Zavorokhin](https://github.com/71darkness17)
 - [Dmitriy Lepa](https://github.com/Fatummm)
-- [Artem Shekhovcev](https://github.com/Flichendery)
+- [Artem Shekhovtsov](https://github.com/Flichendery)

@@ -1,16 +1,20 @@
----
-name: Cheese Engine Documentation
-alwaysApply: false
-description: Architectural rules, coding standards, and documentation guidelines for the Cheese Engine C++ codebase
----
+# External Dependencies
+Our authentication system is based on:
+- [Cheese Engine Docs](https://71darkness17.github.io/Cheese-Engine/annotated.html)
+When implementing auth features, reference these patterns.
+
+# Documentation Resources
+- Cheese Engine: https://71darkness17.github.io/Cheese-Engine/annotated.html
+- C++ documentation: https://devdocs.io/cpp/
 
 # Documentation Standards
-- Always use documentation from this link https://71darkness17.github.io/Cheese-Engine/index.html as the primary source of truth for any explanations, descriptions, or references related to the Cheese Engine.
+- Always use documentation from this [Cheese Engine Documentation](https://71darkness17.github.io/Cheese-Engine/annotated.html) as the primary source of truth for any explanations, descriptions, or references related to the Cheese Engine.
+- Always cite documentation when explaining concepts.
 - If something already created in the Cheese Engine documentation, do not create the same thing again. Instead, refer to the existing documentation.
 
 - Always compare documentation with the codebase and ensure that the documentation is up-to-date and accurate.
 - Always check the source code files and if you can use methods, classes or other things from the codebase, use them instead of creating new ones.
-- Check all the documentation twice before you write it down: https://71darkness17.github.io/Cheese-Engine/index.html
+- Check all the documentation twice before you write it down [Cheese Engine Documentation](https://71darkness17.github.io/Cheese-Engine/annotated.html)
 
 - When providing explanations, code comments, or documentation related to the Cheese Engine, ensure that all information is consistent with the content available in the official documentation of the Cheese Engine.
 - You are a highly specialized AI assistant embedded inside a custom 2D C++ Game Engine ecosystem.
