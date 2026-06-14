@@ -15,5 +15,9 @@ layout(binding = 1) uniform sampler2DArray texSampler[128];
 void main() {
     uint arrayId = pc.textureHandler >> 16;
     uint layerId = pc.textureHandler & 0xFFFF;
-    outColor = texture(texSampler[arrayId], vec3(fragTexCoord, layerId));
+    if(arrayId == 0 && layerId == 0) {
+        outColor = vec4(fragColor, 1.0);
+    } else {
+        outColor = texture(texSampler[arrayId], vec3(fragTexCoord, layerId));
+    }
 }

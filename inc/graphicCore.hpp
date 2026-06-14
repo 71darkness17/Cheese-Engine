@@ -6,7 +6,6 @@
 #include <GLFW/glfw3.h>
 #include <external/stb_image.h>
 
-
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -20,24 +19,23 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <string>
 
 #include "renderQueue.hpp"
 
-const uint32_t HEIGHT          = 600;
-const uint32_t WIDTH           = 800;
-const int MAX_FRAMES_IN_FLIGHT = 2;
-const size_t MAX_VERTICES      = 1200;
-const size_t MAX_INDICES       = 3600;
-const uint32_t MAX_IMAGE_LAYERS = 100;
+const uint32_t HEIGHT           = 600;
+const uint32_t WIDTH            = 800;
+const int MAX_FRAMES_IN_FLIGHT  = 2;
+const size_t MAX_VERTICES       = 1200;
+const size_t MAX_INDICES        = 3600;
+const uint32_t MAX_IMAGE_ARRAYS = 128;
 
 const std::vector<char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
 
 enum KeyStatusEnum { KEY_PRESSED, KEY_RELEASED };
 
@@ -49,12 +47,6 @@ const bool enableValidationLayers = true;
 
 class GraphicCore {
 public:
-
-  struct TextureDescriptor {
-    uint32_t arrayId;
-    uint32_t layerId;
-  };
-
   GraphicCore(GLFWwindow* window);
 
   uint32_t addRectangle(glm::vec2 position, float width, float height, glm::vec3 color);
@@ -66,9 +58,10 @@ public:
 
   void setCamera(glm::vec2 position, float zoom);
 
-  TextureDescriptor addTexture(const std::string &path);
+  TextureDescriptor addTexture(const std::string& path);
 
-  void setTexture(uint32_t figureIndex, TextureDescriptor textureDescriptor);
+  void setTexture(uint32_t figureIndex, TextureDescriptor textureDescriptor,
+                  const std::vector<glm::vec2>& texCoords);
 
   void startGraphicThread();
   void stopGraphicThread();
@@ -99,6 +92,7 @@ private:
 
   struct FigureDesc {
     size_t vertexOffset;
+    uint32_t vertexCount;
     size_t firstIndex;
     uint32_t indexCount;
     glm::mat4 model;
@@ -220,6 +214,11 @@ private:
 
   void _setCamera(glm::vec2 position, float zoom);
 
+  void _setTexture(uint32_t figureIndex, TextureDescriptor textureDescriptor,
+                   std::vector<glm::vec2> texCoords);
+
+  void addDefaultTexture();
+
   void pollRenderQueue();
 
   void drawFrame();
@@ -248,8 +247,9 @@ private:
 
   void createCommandPool();
 
-  void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-    VkImage &image, VkDeviceMemory& imageMemory, uint32_t arrayLayers);
+  void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+                   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image,
+                   VkDeviceMemory& imageMemory, uint32_t arrayLayers);
 
   VkCommandBuffer beginSingleTimeCommands();
 
@@ -259,13 +259,16 @@ private:
 
   void createTextureImageView();
 
-  VkImageView createImageView(VkImage image, VkFormat format, uint32_t layerCount);
+  VkImageView createImageView(VkImage image, VkFormat format, uint32_t layerCount,
+                              VkImageViewType viewType);
 
   void createTextureSampler();
 
-  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount);
+  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout,
+                             VkImageLayout newLayout, uint32_t layerCount);
 
-  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount);
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,
+                         uint32_t layerCount);
 
   void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
                     VkBuffer& buffer, VkDeviceMemory& bufferMemory);
