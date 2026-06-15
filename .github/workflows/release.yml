@@ -1,0 +1,86 @@
+name: Build Release
+
+on:
+release:
+types:
+- created
+
+jobs:
+
+linux:
+runs-on: ubuntu-latest
+
+
+steps:
+
+  - name: Checkout
+    uses: actions/checkout@v4
+
+  - name: Install dependencies
+    run: |
+      sudo apt update
+      sudo apt install -y \
+        build-essential \
+        cmake \
+        libvulkan-dev
+
+  - name: Configure
+    run: |
+      cmake \
+        -B build \
+        -DCMAKE_BUILD_TYPE=Release
+
+  - name: Build
+    run: |
+      cmake \
+        --build build \
+        --parallel
+
+  - name: Package
+    run: |
+      cd build
+      cpack
+
+  - name: Upload Linux package
+    uses: softprops/action-gh-release@v2
+    with:
+      files: |
+        build/*.deb
+
+
+windows:
+runs-on: windows-latest
+
+
+steps:
+
+  - name: Checkout
+    uses: actions/checkout@v4
+
+  - name: Setup MSVC
+    uses: ilammy/msvc-dev-cmd@v1
+
+  - name: Install Vulkan SDK
+    shell: powershell
+    run: |
+      choco install vulkan-sdk -y
+
+  - name: Configure
+    run: |
+      cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+  - name: Build
+    run: |
+      cmake --build build --config Release
+
+  - name: Package
+    run: |
+      cd build
+      cpack
+
+  - name: Upload Windows package
+    uses: softprops/action-gh-release@v2
+    with:
+      files: |
+        build/*.exe
+
