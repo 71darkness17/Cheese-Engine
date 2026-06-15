@@ -33,9 +33,15 @@ const size_t MAX_VERTICES       = 1200;
 const size_t MAX_INDICES        = 3600;
 const uint32_t MAX_IMAGE_ARRAYS = 128;
 
-const std::vector<char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+#ifdef CHEESE_SHADER_DIR
+const char* SHADER_DIR = CHEESE_SHADER_DIR;
+#else
+const char* SHADER_DIR = "../shaders";
+#endif
 
 enum KeyStatusEnum { KEY_PRESSED, KEY_RELEASED };
 
@@ -45,6 +51,9 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
+/**
+ * @brief Class that implements graphic system
+ */
 class GraphicCore {
 public:
   /**
