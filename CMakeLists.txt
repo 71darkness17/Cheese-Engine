@@ -17,29 +17,90 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/g-truc/glm.git
 )
 
-FetchContent_MakeAvailable(entt glm)
+FetchContent_Declare(
+glfw
+GIT_REPOSITORY https://github.com/glfw/glfw.git
+GIT_TAG 3.4
+)
 
-find_package(Vulkan REQUIRED)
-find_package(glfw3 3.3 REQUIRED) 
+FetchContent_MakeAvailable(entt glm glfw)
+
+find_package(Vulkan REQUIRED) 
 
 set(SOURCES
-    src/main.cpp 
     src/graphicCore.cc
     src/renderQueue.cc
     src/types.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_library(${PROJECT_NAME} SHARED
+    ${SOURCES}
+)
 
-target_include_directories(${PROJECT_NAME} PUBLIC inc)
+target_compile_definitions(
+    CheeseEngine
+    PRIVATE
+        $<$<CONFIG:Release>:NDEBUG>
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC 
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/inc>
+    $<INSTALL_INTERFACE:include>
+)
 
 target_link_libraries(${PROJECT_NAME} 
-    PRIVATE 
+    PRIVATE
         Vulkan::Vulkan
+    PUBLIC
         glfw
         EnTT::EnTT
         glm::glm
 )
+
+install(
+TARGETS CheeseEngine
+EXPORT CheeseEngineTargets
+
+RUNTIME DESTINATION bin
+LIBRARY DESTINATION lib
+ARCHIVE DESTINATION lib
+
+)
+
+install(
+DIRECTORY inc/
+DESTINATION include
+)
+
+install(
+EXPORT CheeseEngineTargets
+FILE CheeseEngineConfig.cmake
+NAMESPACE Cheese::
+DESTINATION lib/cmake/CheeseEngine
+)
+
+set(CPACK_PACKAGE_NAME CheeseEngine)
+
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+
+if(WIN32)
+
+set(CPACK_GENERATOR NSIS)
+
+else()
+
+set(CPACK_GENERATOR DEB)
+
+set(
+CPACK_DEBIAN_PACKAGE_DEPENDS
+"libvulkan1"
+)
+
+endif()
+
+include(CPack)
+
+
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)

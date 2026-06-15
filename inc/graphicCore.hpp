@@ -47,23 +47,86 @@ const bool enableValidationLayers = true;
 
 class GraphicCore {
 public:
+  /**
+   * @brief Object constructor
+   * @param window : GLFW window pointer for drawing in
+   */
   GraphicCore(GLFWwindow* window);
 
+  /**
+   * @brief Add Rectangle method
+   * @param position : glm::vec2, position of upper left vertex
+   * @param width : float, the rectangle width
+   * @param height : float, the rectangle height
+   * @param color : glm::vec3, RGB vector of color, each color from 0.f to 1.f
+   * @retval uint32_t index of added figure
+   */
   uint32_t addRectangle(glm::vec2 position, float width, float height, glm::vec3 color);
+
+  /**
+   * @brief Add Triangle method
+   * @param positions : std::array of size 3 with glm::vec2 positions of vertices that in
+   * clockwise(!) order
+   * @param color : glm::vec3, RGB vector of color, each color from 0.f to 1.f
+   * @retval : uint32_t index of added figure
+   */
   uint32_t addTriangle(std::array<glm::vec2, 3> positions, glm::vec3 color);
 
+  /**
+   * @brief Remove Figure method
+   * @param index : uint32 index of figure to remove
+   * @retval None
+   */
   void removeFigure(uint32_t index);
 
+  /**
+   * @brief Set transform matrix for figure
+   * @param index : uint32 index of figure
+   * @param transform : glm::mat4, model matrix of object
+   * @retval None
+   */
   void setTransform(uint32_t index, const glm::mat4& transform);
 
+  /**
+   * @brief Set camera method
+   * @param position : glm::vec2, new position of camera
+   * @param zoom : float, just camera zoom, default is 1.0f
+   * @retval None
+   */
   void setCamera(glm::vec2 position, float zoom);
 
+  /**
+   * @brief Loading texture method
+   * @note Must be used only when graphics thread is not started
+   * @param path : std::string, absolute path to texture file
+   * @retval texture descriptor that required to set this texture to some figure
+   */
   TextureDescriptor addTexture(const std::string& path);
 
+  /**
+   * @brief Set Texture method
+   * @note Use only valid data - in this method it is developer's responsibility
+   * @param figureIndex : uint32_t, index of a figure that gets texture
+   * @param textureDescriptor : TextureDescriptor of texture to be setted
+   * @param texCoords : std::vector of glm::vec2 texture coords for every vertex of figure
+   * @retval None
+   */
   void setTexture(uint32_t figureIndex, TextureDescriptor textureDescriptor,
                   const std::vector<glm::vec2>& texCoords);
 
+  /**
+   * @brief Starting graphics thread method
+   * @note must be called once only until the thread is not stopped
+   * @param None
+   * @retval None
+   */
   void startGraphicThread();
+
+  /**
+   * @brief Stopping graphics thread method
+   * @param None
+   * @retval None
+   */
   void stopGraphicThread();
 
 private:
