@@ -1,86 +1,122 @@
 name: Build Release
 
 on:
-release:
-types:
-- created
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
+  linux:
+    runs-on: ubuntu-latest
 
-linux:
-runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake libvulkan-dev xorg-dev wayland-protocols libwayland-dev libwayland-bin libxkbcommon-dev
 
-steps:
+      - name: Configure
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_ENGINE=ON
 
-  - name: Checkout
-    uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cmake --build build --parallel
 
-  - name: Install dependencies
-    run: |
-      sudo apt update
-      sudo apt install -y \
-        build-essential \
-        cmake \
-        libvulkan-dev
+      - name: Package
+        run: |
+          cd build
+          cpack
 
-  - name: Configure
-    run: |
-      cmake \
-        -B build \
-        -DCMAKE_BUILD_TYPE=Release
+      - name: Upload Linux package
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.deb
+    
 
-  - name: Build
-    run: |
-      cmake \
-        --build build \
-        --parallel
+  windows:
+    runs-on: windows-latest
 
-  - name: Package
-    run: |
-      cd build
-      cpack
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  - name: Upload Linux package
-    uses: softprops/action-gh-release@v2
-    with:
-      files: |
-        build/*.deb
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Install Vulkan SDK
+        shell: powershell
+        run: |
+          choco install vulkan-sdk -y
 
-windows:
-runs-on: windows-latest
+      - name: Locate Vulkan SDK
+        shell: powershell
+        run: |
+          $sdk = Get-ChildItem "C:\VulkanSDK" -Directory |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
 
+          if ($null -eq $sdk) {
+            throw "Vulkan SDK not found"
+          }
 
-steps:
+          "VULKAN_SDK=$($sdk.FullName)" | Out-File `
+            -FilePath $env:GITHUB_ENV `
+            -Encoding utf8 `
+            -Append
 
-  - name: Checkout
-    uses: actions/checkout@v4
+          Write-Host "Stored SDK: $($sdk.FullName)"
 
-  - name: Setup MSVC
-    uses: ilammy/msvc-dev-cmd@v1
+      - name: Verify Vulkan SDK
+        shell: powershell
+        run: |
+          Write-Host "VULKAN_SDK=$env:VULKAN_SDK"
 
-  - name: Install Vulkan SDK
-    shell: powershell
-    run: |
-      choco install vulkan-sdk -y
+          Test-Path "$env:VULKAN_SDK\Include\vulkan\vulkan.h"
 
-  - name: Configure
-    run: |
-      cmake -B build -DCMAKE_BUILD_TYPE=Release
+          if (!(Test-Path "$env:VULKAN_SDK\Include\vulkan\vulkan.h")) {
+            throw "Vulkan headers not found"
+          }
 
-  - name: Build
-    run: |
-      cmake --build build --config Release
+          if (!(Test-Path "$env:VULKAN_SDK\Lib\vulkan-1.lib")) {
+            throw "Vulkan library not found"
+          }
 
-  - name: Package
-    run: |
-      cd build
-      cpack
+      - name: Install NSIS
+        run: choco install nsis -y
 
-  - name: Upload Windows package
-    uses: softprops/action-gh-release@v2
-    with:
-      files: |
-        build/*.exe
+      - name: Configure
+        shell: powershell
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DVulkan_INCLUDE_DIR="$env:VULKAN_SDK\Include" `
+            -DVulkan_LIBRARY="$env:VULKAN_SDK\Lib\vulkan-1.lib"
 
+      - name: Build
+        run: |
+          cmake --build build --config Release
+
+      - name: Install 
+        run: | 
+          cmake --install build --prefix install
+
+      - name: Package
+        run: |
+          cd build
+          cpack
+
+      - name: Upload Windows package
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.exe
+    
