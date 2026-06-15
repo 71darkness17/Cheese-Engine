@@ -197,7 +197,8 @@ TextureDescriptor GraphicCore::addTexture(const std::string& path) {
     }
   }
   if (!found) {
-    VkExtent2D extent = {.width = texWidth, .height = texHeight};
+    VkExtent2D extent = {.width  = static_cast<uint32_t>(texWidth),
+                         .height = static_cast<uint32_t>(texHeight)};
     textureArrays.push_back(TextureArray{.extent = extent});
     arrayId = textureArrays.size() - 1;
   }
@@ -1027,8 +1028,9 @@ void GraphicCore::createTextureImage() {
 
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    auto* mappedData = static_cast<char*>(data);
     for (int i = 0; i != textureArray.layersCount; ++i) {
-      memcpy(data + i * layerSize, textureArray.pixels[i], static_cast<size_t>(layerSize));
+      memcpy(mappedData + i * layerSize, textureArray.pixels[i], static_cast<size_t>(layerSize));
       stbi_image_free(textureArray.pixels[i]);
     }
     vkUnmapMemory(device, stagingBufferMemory);
