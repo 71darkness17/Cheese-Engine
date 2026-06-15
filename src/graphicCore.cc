@@ -1468,9 +1468,8 @@ bool GraphicCore::isDeviceSuitable(VkPhysicalDevice device) {
   }
 
   QueueFamilyIndicies indicies = findQueueFamilies(device);
-  return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && features.geometryShader &&
-         indicies.isComplete() && extesionsSupported && swapChainAdequate &&
-         features.samplerAnisotropy;
+  return features.geometryShader && indicies.isComplete() && extesionsSupported &&
+         swapChainAdequate && features.samplerAnisotropy;
 }
 
 void GraphicCore::pickPhysicalDevice() {
