@@ -39,7 +39,7 @@ The engine provides a modular foundation for developing 2D games. It is designed
  - install the latest release package
  - install the latest shaders archive
  - unpack shaders dir in your project dir
- - install entt and glm from oficial websites or github
+ - install [entt](https://github.com/skypjack/entt) and [glm](https://github.com/g-truc/glm) from oficial websites or github
  - add to your CMakeLists:
 ```cmake
 target_include_directories({YOUR_TARGET}
