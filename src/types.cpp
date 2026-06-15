@@ -97,22 +97,6 @@ RigidBodyComponent::RigidBodyComponent(BodyType bt, const glm::vec2& linearVeloc
     friction(friction) {
 }
 
-PolygonGeometry::PolygonGeometry(const std::vector<glm::vec2>& vertices) : vertices(vertices) {
-  calculateNormals();
-}
-
-void PolygonGeometry::calculateNormals() {
-  normals.clear();
-  size_t count = vertices.size();
-  normals.resize(count);
-
-  for (size_t i = 0; i < count; ++i) {
-    glm::vec2 edge   = vertices[(i + 1) % count] - vertices[i];
-    glm::vec2 normal = glm::normalize(glm::vec2(-edge.y, edge.x));
-    normals[i]       = normal;
-  }
-}
-
 ColliderComponent::ColliderComponent() : shapeType(BodyShape::Circle) {
   CircleGeometry cg;
   cg.radius = 1.0f;
@@ -127,7 +111,6 @@ ColliderComponent::ColliderComponent(const BodyShape& st) : shapeType(st) {
   } else if (st == BodyShape::Polygon) {
     shapeData              = PolygonGeometry();
     getPolygon()->vertices = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
-    getPolygon()->calculateNormals();
   } else {
     throw std::logic_error("Incorrect Geometry type!");
   }
@@ -175,7 +158,6 @@ PhysicsSystem::PhysicsSystem(entt::registry& registry) : registry(&registry) {
 }
 
 void PhysicsSystem::update(float dt) {
-  contacts.clear();
   if (registry == nullptr) {
     return;
   }
