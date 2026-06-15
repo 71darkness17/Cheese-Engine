@@ -241,10 +241,13 @@ constexpr uint32_t All              = 0xFFFF;
 struct ColliderComponent {
   BodyShape shapeType;  ///< shape of the object: polygon, circle, segment etc
   ShapeData shapeData;  ///< shape data: vertices, radius, borders etc
-  glm::vec2 localOffset = cd_defaultLocalOffset;
-  bool isTrigger        = cd_defaultTriggerStatus;
-  uint32_t categoryBits = ColliderLayers::Player;
-  uint32_t maskBits     = ColliderLayers::All & ~ColliderLayers::PlayerProjectile;
+  glm::vec2 localOffset = cd_defaultLocalOffset;  ///< local offset of the center of the object
+  bool isTrigger = cd_defaultTriggerStatus;  ///< flag that shows whether the object is trigger zone
+  uint32_t categoryBits = ColliderLayers::Player;  ///< bitmask that shows the type of the object,
+                                                   ///< used for collision filtering
+  uint32_t maskBits =
+    ColliderLayers::All & ~ColliderLayers::PlayerProjectile;  ///< bitmask, shows the types that the
+                                                              ///< object can collide with
 
   ColliderComponent();
   ColliderComponent(const BodyShape& st);
@@ -265,23 +268,83 @@ struct ColliderComponent {
     }
   }
 
+  /**
+   * @brief  getter for accessing the CircleGeometry data
+   * @param  None
+   * @retval pointer to the geometry type
+   */
   CircleGeometry* getCircle();
+
+  /**
+   * @brief  getter for accessing the CircleGeometry data
+   * @param  None
+   * @retval pointer to the geometry type
+   */
   const CircleGeometry* getCircle() const;
 
+  /**
+   * @brief  getter for accessing the PolygonGeometry data
+   * @param  None
+   * @retval pointer to the geometry type
+   */
   PolygonGeometry* getPolygon();
+
+  /**
+   * @brief  getter for accessing the PolygonGeometry data
+   * @param  None
+   * @retval pointer to the geometry type
+   */
   const PolygonGeometry* getPolygon() const;
+
+  /**
+   * @brief  getter for accessing the AABB object
+   * @param  tc: transform component for getting position, rotation, scaling
+   * @retval AABB object
+   */
   AABB getAABB(const TransformComponent& tc) const;
 };
 
 class PhysicsSystem {
 public:
+  /**
+   * @brief constructor for PhysicsSystem
+   * @param registry: reference to the entt registry to manage entities and components
+   */
   PhysicsSystem(entt::registry& registry);
 
+  /**
+   * @brief  updates the physics simulation for the current frame
+   * @param  dt: delta time since the last frame
+   * @retval None
+   */
   void update(float dt);
 
+  /**
+   * @brief  sets the global gravity vector for the physics world
+   * @param  g: new two-dimensional gravity vector
+   * @retval None
+   */
   void setGravity(const glm::vec2& g);
+
+  /**
+   * @brief  gets the current global gravity vector
+   * @param  None
+   * @retval current gravity vector
+   */
   glm::vec2 getGravity() const;
+
+  /**
+   * @brief  updates the pointer to the entt registry
+   * @param  registry: pointer to the new entt registry
+   * @retval None
+   */
   void setRegistry(entt::registry* registry);
+
+  /**
+   * @brief  sets the event bus for dispatching physics-related events (e.g., collisions)
+   * @param  eventBus: pointer to the EventBus instance
+   * @retval None
+   */
   void setEventBus(EventBus* eventBus);
 
 private:
@@ -306,9 +369,9 @@ private:
                                const TransformComponent& tc2, const PolygonGeometry& geometry2);
 
 private:
-  glm::vec2 gravity{0.0f, 0.0f};
-  entt::registry* registry;
-  EventBus* eventBus;
+  glm::vec2 gravity{0.0f, 0.0f};  ///< global gravity vector applied to dynamic bodies
+  entt::registry* registry;       ///< pointer to the registry for fetching entities
+  EventBus* eventBus;             ///< pointer to the system event bus
 };
 
 }  // namespace phys2d
