@@ -207,14 +207,23 @@ struct RigidBodyComponent {
 
 struct PolygonGeometry {
   std::vector<glm::vec2> vertices;
-  std::vector<glm::vec2> normals;
-  PolygonGeometry() = default;
-  PolygonGeometry(const std::vector<glm::vec2>& vertices);
-  void calculateNormals();
 };
 
 struct CircleGeometry {
   float radius;
+};
+
+struct CapsuleGeometry {
+  float radius;
+  float rectangleLen;
+};
+
+struct SegmentGeometry {
+  glm::vec2 borders[2];
+};
+
+struct SegmentChain {
+  std::vector<glm::vec2> points;
 };
 
 using ShapeData = std::variant<PolygonGeometry, CircleGeometry>;
@@ -264,16 +273,6 @@ struct ColliderComponent {
   AABB getAABB(const TransformComponent& tc) const;
 };
 
-struct CollisionManifold {
-  entt::entity entityA;
-  entt::entity entityB;
-
-  glm::vec2 normal;
-  float penetration;
-
-  std::vector<glm::vec2> contactPoints;
-};
-
 class PhysicsSystem {
 public:
   PhysicsSystem(entt::registry& registry);
@@ -308,11 +307,8 @@ private:
 
 private:
   glm::vec2 gravity{0.0f, 0.0f};
-  std::vector<CollisionManifold> contacts;
   entt::registry* registry;
   EventBus* eventBus;
-  const int velocityIterations = 6;
-  const int positionIterations = 2;
 };
 
 }  // namespace phys2d
