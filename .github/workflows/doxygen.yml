@@ -27,9 +27,19 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y doxygen graphviz
+
+      - name: Install Dependencies
+        run: |
+          sudo apt install -y xorg-dev
       
+      - name: Configure
+        run: |
+          cmake -B build -DBUILD_ENGINE=OFF -DBUILD_DOCS=ON
+          
+
       - name: Create documentation
-        run: doxygen Doxyfile
+        run: |
+          cmake --build build --target docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -37,7 +47,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'docs/html'
+          path: 'build/docs/html'
 
   deploy:
     environment:
